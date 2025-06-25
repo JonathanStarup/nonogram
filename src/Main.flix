@@ -4,7 +4,7 @@ import java.awt.event.WindowEvent
 import java.awt.Canvas
 import java.awt.Color
 import java.awt.Font
-import java.awt.Graphics
+import java.awt.{Graphics => JGraphics}
 
 def main(): Unit \ IO + Chan = {
     let {frame = _frame, waitForExit} = makeFrame({
@@ -12,11 +12,7 @@ def main(): Unit \ IO + Chan = {
         width = 800,
         height = 450,
         init = g -> {
-            g.setColor(Color.red);
-            // set Font
-            g.setFont(new Font("Bold", 1, 20));
-            // draw a string
-            g.drawString("Demo", 800/8, 450/6)
+            Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Graphics.Color.Black, g)
         }
     });
     waitForExit()
@@ -26,7 +22,7 @@ type alias FrameConfig[ef: Eff] = {
     title = String,
     height = Int32,
     width = Int32,
-    init = Graphics -> Unit \ ef
+    init = JGraphics -> Unit \ ef
 }
 
 type alias Frame = {
@@ -47,7 +43,7 @@ def makeFrame(config: FrameConfig[ef]): Frame \ IO + Chan + ef = {
     f |> addOnExitListener(() -> Channel.send((), send));
     f.setSize(width, height);
     checked_ecast(f.add(new Canvas {
-        def paint(_this: Canvas, g: Graphics): Unit \ ef = {
+        def paint(_this: Canvas, g: JGraphics): Unit \ ef = {
             init(g)
         }
     }));
@@ -68,4 +64,20 @@ def addOnExitListener(f: Unit -> Unit \ ef, frame: JFrame): Unit \ IO = {
         def windowDeactivated(_this: WindowListener, _: WindowEvent): Unit = ()
         def windowOpened(_this: WindowListener, _: WindowEvent): Unit = ()
     })
+}
+
+mod Graphics {
+    import java.awt.Graphics
+    import java.awt.{Color => JColor}
+
+    pub enum Color {
+        case Black
+    }
+
+    pub def fillRect(pos: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics): Unit \ IO = {
+        match color {
+            case Color.Black => g.setColor(JColor.black)
+        };
+        g.fillRect(pos#x, pos#y, dim#width, dim#height)
+    }
 }
