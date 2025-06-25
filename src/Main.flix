@@ -7,14 +7,26 @@ import java.awt.Font
 import java.awt.Graphics
 
 def main(): Unit \ IO + Chan = {
-    let {frame = _frame, waitForExit} = makeFrame({title = "Demo", width = 800, height = 450});
+    let {frame = _frame, waitForExit} = makeFrame({
+        title = "Demo",
+        width = 800,
+        height = 450,
+        init = g -> {
+            g.setColor(Color.red);
+            // set Font
+            g.setFont(new Font("Bold", 1, 20));
+            // draw a string
+            g.drawString("Demo", 800/8, 450/6)
+        }
+    });
     waitForExit()
 }
 
-type alias FrameConfig = {
+type alias FrameConfig[ef: Eff] = {
     title = String,
     height = Int32,
-    width = Int32
+    width = Int32,
+    init = Graphics -> Unit \ ef
 }
 
 type alias Frame = {
@@ -22,8 +34,8 @@ type alias Frame = {
     waitForExit = Unit -> Unit \ Chan
 }
 
-def makeFrame(config: FrameConfig): Frame \ IO + Chan = {
-    let {title, height, width} = config;
+def makeFrame(config: FrameConfig[ef]): Frame \ IO + Chan + ef = {
+    let {title, height, width, init} = config;
     let (send, recv) = Channel.buffered(1);
     def waitForClose() = {
         // Unit only has one value, so no non-determinism.
@@ -34,15 +46,11 @@ def makeFrame(config: FrameConfig): Frame \ IO + Chan = {
     f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     f |> addOnExitListener(() -> Channel.send((), send));
     f.setSize(width, height);
-    f.add(new Canvas {
-        def paint(_this: Canvas, g: Graphics): Unit \ IO = {
-            g.setColor(Color.red);
-            // set Font
-            g.setFont(new Font("Bold", 1, 20));
-            // draw a string
-            g.drawString(title, width/8, height/6)
+    checked_ecast(f.add(new Canvas {
+        def paint(_this: Canvas, g: Graphics): Unit \ ef = {
+            init(g)
         }
-    });
+    }));
     f.setResizable(false);
     f.setVisible(true);
     {frame = f, waitForExit = waitForClose}
