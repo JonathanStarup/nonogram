@@ -12,9 +12,9 @@ import javax.swing.JFrame
 
 use Graphics.Color
 
-def main(): Unit \ IO + Chan = region rc {
+def main(): Unit \ IO = region rc {
     let paint = Ref.fresh(rc, Color.Black);
-    let {frame = _frame, waitForExit} = makeFrame({
+    runFrame({
         title = "Demo",
         width = 800,
         height = 450,
@@ -34,8 +34,7 @@ def main(): Unit \ IO + Chan = region rc {
                 PaintEvent.Repaint
             }
         }
-    });
-    waitForExit()
+    })
 }
 
 type alias FrameConfig[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff] = {
@@ -49,6 +48,16 @@ type alias FrameConfig[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff] = {
 type alias Frame = {
     frame = JFrame,
     waitForExit = Unit -> Unit \ Chan
+}
+
+def runFrame(config: FrameConfig[ef1, ef2, ef3, ef4]): Unit \ IO + ef1 + ef2 + ef3 + ef4 = {
+    // The channel is enclosed so the Chan effect can be removed.
+    checked_ecast(unsafely Chan run {
+        let {frame = _, waitForExit} = makeFrame(config);
+        // ef2+ are captured in listeners, assume that they happen.
+        checked_ecast(());
+        waitForExit()
+    })
 }
 
 def makeFrame(config: FrameConfig[ef1, ef2, ef3, ef4]): Frame \ IO + Chan + ef1 = {
