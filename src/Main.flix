@@ -1,28 +1,45 @@
-import javax.swing.JFrame
-import java.awt.event.WindowListener
-import java.awt.event.WindowEvent
+import java.awt.{Graphics => JGraphics}
 import java.awt.Canvas
 import java.awt.Color
+import java.awt.event.MouseEvent
+import java.awt.event.{MouseListener => JMouseListener}
+import java.awt.event.WindowEvent
+import java.awt.event.WindowListener
 import java.awt.Font
-import java.awt.{Graphics => JGraphics}
+import javax.swing.JFrame
+import java.lang.System
 
-def main(): Unit \ IO + Chan = {
+def main(): Unit \ IO + Chan = region rc {
+    let lastPress = Ref.fresh(rc, None);
     let {frame = _frame, waitForExit} = makeFrame({
         title = "Demo",
         width = 800,
         height = 450,
-        init = g -> {
-            Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Graphics.Color.Black, g)
+        paint = g -> {
+            match Ref.get(lastPress) {
+                case None =>
+                    Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Graphics.Color.Black, g)
+                case Some({x, y}) =>
+                    Graphics.fillCircle({x = x, y = y}, {radius = 20}, Graphics.Color.Red, g)
+            }
+        },
+        mouseListener = {
+            onMousePress = event -> {
+                Ref.put(Some({x = event.getX(), y = event.getY()}), lastPress);
+                PaintEvent.Repaint
+            },
+            onMouseRelease = _ -> PaintEvent.Nothing
         }
     });
     waitForExit()
 }
 
-type alias FrameConfig[ef: Eff] = {
+type alias FrameConfig[ef1: Eff, ef2: Eff, ef3: Eff] = {
     title = String,
     height = Int32,
     width = Int32,
-    init = JGraphics -> Unit \ ef
+    paint = JGraphics -> Unit \ ef1,
+    mouseListener = MouseListener[ef2, ef3]
 }
 
 type alias Frame = {
@@ -30,8 +47,8 @@ type alias Frame = {
     waitForExit = Unit -> Unit \ Chan
 }
 
-def makeFrame(config: FrameConfig[ef]): Frame \ IO + Chan + ef = {
-    let {title, height, width, init} = config;
+def makeFrame(config: FrameConfig[ef1, ef2, ef3]): Frame \ IO + Chan + ef1 = {
+    let {title, height, width, paint, mouseListener} = config;
     let (send, recv) = Channel.buffered(1);
     def waitForClose() = {
         // Unit only has one value, so no non-determinism.
@@ -42,11 +59,14 @@ def makeFrame(config: FrameConfig[ef]): Frame \ IO + Chan + ef = {
     f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     f |> addOnExitListener(() -> Channel.send((), send));
     f.setSize(width, height);
-    checked_ecast(f.add(new Canvas {
-        def paint(_this: Canvas, g: JGraphics): Unit \ ef = {
-            init(g)
+    let canvas = new Canvas {
+        def paint(_this: Canvas, g: JGraphics): Unit \ ef1 = {
+            paint(g)
         }
-    }));
+    };
+    canvas |> addMouseListener(mouseListener);
+    f.add(canvas);
+    touchEff((ProxyEff.Proxy: ProxyEff[ef1]));
     f.setResizable(false);
     f.setVisible(true);
     {frame = f, waitForExit = waitForClose}
@@ -66,18 +86,64 @@ def addOnExitListener(f: Unit -> Unit \ ef, frame: JFrame): Unit \ IO = {
     })
 }
 
+enum PaintEvent {
+    case Repaint, Nothing
+}
+
+enum ProxyEff[_: Eff] {
+    case Proxy
+}
+
+def touchEff(_: ProxyEff[ef]): Unit \ ef = checked_ecast(())
+
+type alias MouseListener[ef1: Eff, ef2: Eff] = {
+    onMousePress = MouseEvent -> PaintEvent \ ef1,
+    onMouseRelease = MouseEvent -> PaintEvent \ ef2
+}
+
+def addMouseListener(listener: MouseListener[ef1, ef2], canvas: Canvas): Unit \ IO = {
+    canvas.addMouseListener(new JMouseListener {
+        def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
+        def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
+        def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef1 + IO = {
+            match listener#onMousePress(event) {
+                case PaintEvent.Nothing => ()
+                case PaintEvent.Repaint => canvas.repaint()
+            }
+        }
+        def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
+        def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef2 + IO = {
+            match listener#onMouseRelease(event) {
+                case PaintEvent.Nothing => ()
+                case PaintEvent.Repaint => canvas.repaint()
+            }
+        }
+    })
+}
+
 mod Graphics {
-    import java.awt.Graphics
     import java.awt.{Color => JColor}
+    import java.awt.Graphics
 
     pub enum Color {
         case Black
+        case Red
     }
 
-    pub def fillRect(pos: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics): Unit \ IO = {
+    pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics): Unit \ IO = {
+        colorSwap(color, g);
+        g.fillRect(corner#x, corner#y, dim#width, dim#height)
+    }
+
+    pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, g: Graphics): Unit \ IO = {
+        colorSwap(color, g);
+        let offset = radius#radius / 2;
+        g.fillOval(center#x - offset, center#y - offset, radius#radius, radius#radius)
+    }
+
+    def colorSwap(color: Color, g: Graphics): Unit \ IO =
         match color {
             case Color.Black => g.setColor(JColor.black)
-        };
-        g.fillRect(pos#x, pos#y, dim#width, dim#height)
-    }
+            case Color.Red => g.setColor(JColor.red)
+        }
 }
