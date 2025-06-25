@@ -1,5 +1,4 @@
 import java.awt.{Graphics => JGraphics}
-import java.awt.Color
 import java.awt.event.{MouseListener => JMouseListener}
 import java.awt.event.{MouseMotionListener => JMouseMotionListener}
 import java.awt.event.MouseEvent
@@ -11,10 +10,10 @@ import java.awt.image.ImageObserver
 import javax.swing.JComponent
 import javax.swing.JFrame
 
-def main(): Unit \ IO + Chan = {
-    def paintCursor(x, y, g) = {
-        Graphics.fillCircle({x = x, y = y}, {radius = 20}, Graphics.Color.Red, g)
-    };
+use Graphics.Color
+
+def main(): Unit \ IO + Chan = region rc {
+    let paint = Ref.fresh(rc, Color.Black);
     let {frame = _frame, waitForExit} = makeFrame({
         title = "Demo",
         width = 800,
@@ -24,12 +23,14 @@ def main(): Unit \ IO + Chan = {
         },
         mouseListener = {
             onPress = (event, g) -> {
-                paintCursor(event.getX(), event.getY(), g);
+                if (event.getButton() == MouseEvent.BUTTON1) Ref.put(Color.Red, paint)
+                else Ref.put(Color.Black, paint);
+                Graphics.fillCircle({x = event.getX(), y = event.getY()}, {radius = 20}, Ref.get(paint), g);
                 PaintEvent.Repaint
             },
             onRelease = (_, _) -> PaintEvent.Nothing,
             onDrag = (event, g) -> {
-                paintCursor(event.getX(), event.getY(), g);
+                Graphics.fillCircle({x = event.getX(), y = event.getY()}, {radius = 20}, Ref.get(paint), g);
                 PaintEvent.Repaint
             }
         }
