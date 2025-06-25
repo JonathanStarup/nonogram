@@ -1,13 +1,14 @@
 import java.awt.{Graphics => JGraphics}
-import java.awt.Canvas
 import java.awt.Color
-import java.awt.event.MouseEvent
 import java.awt.event.{MouseListener => JMouseListener}
+import java.awt.event.MouseEvent
 import java.awt.event.WindowEvent
 import java.awt.event.WindowListener
-import java.awt.Font
+import java.awt.Graphics2D
+import java.awt.image.BufferedImage
+import java.awt.image.ImageObserver
+import javax.swing.JComponent
 import javax.swing.JFrame
-import java.lang.System
 
 def main(): Unit \ IO + Chan = region rc {
     let lastPress = Ref.fresh(rc, None);
@@ -38,7 +39,7 @@ type alias FrameConfig[ef1: Eff, ef2: Eff, ef3: Eff] = {
     title = String,
     height = Int32,
     width = Int32,
-    paint = JGraphics -> Unit \ ef1,
+    paint = Graphics2D -> Unit \ ef1,
     mouseListener = MouseListener[ef2, ef3]
 }
 
@@ -59,13 +60,17 @@ def makeFrame(config: FrameConfig[ef1, ef2, ef3]): Frame \ IO + Chan + ef1 = {
     f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     f |> addOnExitListener(() -> Channel.send((), send));
     f.setSize(width, height);
-    let canvas = new Canvas {
-        def paint(_this: Canvas, g: JGraphics): Unit \ ef1 = {
-            paint(g)
+    let image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+    let base = new JComponent {
+        def paint(_this: JComponent, g: JGraphics): Unit \ ef1 + IO = {
+            let gg = image.createGraphics();
+            paint(gg);
+            gg.dispose();
+            discard g.drawImage(image, 0, 0, unchecked_cast(null as ImageObserver))
         }
     };
-    canvas |> addMouseListener(mouseListener);
-    f.add(canvas);
+    base |> addMouseListener(mouseListener);
+    f.add(base);
     touchEff((ProxyEff.Proxy: ProxyEff[ef1]));
     f.setResizable(false);
     f.setVisible(true);
@@ -101,21 +106,21 @@ type alias MouseListener[ef1: Eff, ef2: Eff] = {
     onMouseRelease = MouseEvent -> PaintEvent \ ef2
 }
 
-def addMouseListener(listener: MouseListener[ef1, ef2], canvas: Canvas): Unit \ IO = {
-    canvas.addMouseListener(new JMouseListener {
+def addMouseListener(listener: MouseListener[ef1, ef2], base: JComponent): Unit \ IO = {
+    base.addMouseListener(new JMouseListener {
         def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
         def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
         def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef1 + IO = {
             match listener#onMousePress(event) {
                 case PaintEvent.Nothing => ()
-                case PaintEvent.Repaint => canvas.repaint()
+                case PaintEvent.Repaint => base.repaint()
             }
         }
         def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
         def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef2 + IO = {
             match listener#onMouseRelease(event) {
                 case PaintEvent.Nothing => ()
-                case PaintEvent.Repaint => canvas.repaint()
+                case PaintEvent.Repaint => base.repaint()
             }
         }
     })
@@ -123,25 +128,25 @@ def addMouseListener(listener: MouseListener[ef1, ef2], canvas: Canvas): Unit \ 
 
 mod Graphics {
     import java.awt.{Color => JColor}
-    import java.awt.Graphics
+    import java.awt.Graphics2D
 
     pub enum Color {
         case Black
         case Red
     }
 
-    pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics): Unit \ IO = {
+    pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics2D): Unit \ IO = {
         colorSwap(color, g);
         g.fillRect(corner#x, corner#y, dim#width, dim#height)
     }
 
-    pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, g: Graphics): Unit \ IO = {
+    pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, g: Graphics2D): Unit \ IO = {
         colorSwap(color, g);
         let offset = radius#radius / 2;
         g.fillOval(center#x - offset, center#y - offset, radius#radius, radius#radius)
     }
 
-    def colorSwap(color: Color, g: Graphics): Unit \ IO =
+    def colorSwap(color: Color, g: Graphics2D): Unit \ IO =
         match color {
             case Color.Black => g.setColor(JColor.black)
             case Color.Red => g.setColor(JColor.red)
