@@ -1,6 +1,7 @@
 import java.awt.{Graphics => JGraphics}
 import java.awt.Color
 import java.awt.event.{MouseListener => JMouseListener}
+import java.awt.event.{MouseMotionListener => JMouseMotionListener}
 import java.awt.event.MouseEvent
 import java.awt.event.WindowEvent
 import java.awt.event.WindowListener
@@ -11,6 +12,9 @@ import javax.swing.JComponent
 import javax.swing.JFrame
 
 def main(): Unit \ IO + Chan = {
+    def paintCursor(x, y, g) = {
+        Graphics.fillCircle({x = x, y = y}, {radius = 20}, Graphics.Color.Red, g)
+    };
     let {frame = _frame, waitForExit} = makeFrame({
         title = "Demo",
         width = 800,
@@ -20,21 +24,25 @@ def main(): Unit \ IO + Chan = {
         },
         mouseListener = {
             onPress = (event, g) -> {
-                Graphics.fillCircle({x = event.getX(), y = event.getY()}, {radius = 20}, Graphics.Color.Red, g);
+                paintCursor(event.getX(), event.getY(), g);
                 PaintEvent.Repaint
             },
-            onRelease = _ -> _ -> PaintEvent.Nothing
+            onRelease = (_, _) -> PaintEvent.Nothing,
+            onDrag = (event, g) -> {
+                paintCursor(event.getX(), event.getY(), g);
+                PaintEvent.Repaint
+            }
         }
     });
     waitForExit()
 }
 
-type alias FrameConfig[ef1: Eff, ef2: Eff, ef3: Eff] = {
+type alias FrameConfig[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff] = {
     title = String,
     height = Int32,
     width = Int32,
     init = Graphics2D -> Unit \ ef1,
-    mouseListener = MouseListener[ef2, ef3]
+    mouseListener = MouseListener[ef2, ef3, ef4]
 }
 
 type alias Frame = {
@@ -42,7 +50,7 @@ type alias Frame = {
     waitForExit = Unit -> Unit \ Chan
 }
 
-def makeFrame(config: FrameConfig[ef1, ef2, ef3]): Frame \ IO + Chan + ef1 = {
+def makeFrame(config: FrameConfig[ef1, ef2, ef3, ef4]): Frame \ IO + Chan + ef1 = {
     let {title, height, width, init, mouseListener} = config;
     let (send, recv) = Channel.buffered(1);
     def waitForClose() = {
@@ -95,12 +103,13 @@ enum ProxyEff[_: Eff] {
 
 def touchEff(_: ProxyEff[ef]): Unit \ ef = checked_ecast(())
 
-type alias MouseListener[ef1: Eff, ef2: Eff] = {
+type alias MouseListener[ef1: Eff, ef2: Eff, ef3: Eff] = {
     onPress = MouseEvent -> Graphics2D -> PaintEvent \ ef1,
-    onRelease = MouseEvent -> Graphics2D -> PaintEvent \ ef2
+    onRelease = MouseEvent -> Graphics2D -> PaintEvent \ ef2,
+    onDrag = MouseEvent -> Graphics2D -> PaintEvent \ ef3
 }
 
-def addMouseListener(image: BufferedImage, listener: MouseListener[ef1, ef2], base: JComponent): Unit \ IO = {
+def addMouseListener(image: BufferedImage, listener: MouseListener[ef1, ef2, ef3], base: JComponent): Unit \ IO = {
     base.addMouseListener(new JMouseListener {
         def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
         def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
@@ -117,6 +126,18 @@ def addMouseListener(image: BufferedImage, listener: MouseListener[ef1, ef2], ba
         def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef2 + IO = {
             let g = image.createGraphics();
             let pEvent = listener#onRelease(event, g);
+            g.dispose();
+            match pEvent {
+                case PaintEvent.Nothing => ()
+                case PaintEvent.Repaint => base.repaint()
+            }
+        }
+    });
+    base.addMouseMotionListener(new JMouseMotionListener {
+        def mouseMoved(_this: JMouseMotionListener, _event: MouseEvent): Unit = ()
+        def mouseDragged(_this: JMouseMotionListener, event: MouseEvent): Unit \ ef3 + IO = {
+            let g = image.createGraphics();
+            let pEvent = listener#onDrag(event, g);
             g.dispose();
             match pEvent {
                 case PaintEvent.Nothing => ()
