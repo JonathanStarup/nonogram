@@ -7,11 +7,23 @@ import java.awt.Font
 import java.awt.Graphics
 
 def main(): Unit \ IO + Chan = {
-    let (_frame, wait) = makeFrame("Demo", {w = 800, h = 450});
-    wait()
+    let {frame = _frame, waitForExit} = makeFrame({title = "Demo", width = 800, height = 450});
+    waitForExit()
 }
 
-def makeFrame(title: String, dim: {h = Int32, w = Int32}): (JFrame, Unit -> Unit \ Chan) \ IO + Chan = {
+type alias FrameConfig = {
+    title = String,
+    height = Int32,
+    width = Int32
+}
+
+type alias Frame = {
+    frame = JFrame,
+    waitForExit = Unit -> Unit \ Chan
+}
+
+def makeFrame(config: FrameConfig): Frame \ IO + Chan = {
+    let {title, height, width} = config;
     let (send, recv) = Channel.buffered(1);
     def waitForClose() = {
         // Unit only has one value, so no non-determinism.
@@ -21,19 +33,19 @@ def makeFrame(title: String, dim: {h = Int32, w = Int32}): (JFrame, Unit -> Unit
     let f = new JFrame(title);
     f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     f |> addOnExitListener(() -> Channel.send((), send));
-    f.setSize(dim#w, dim#h);
+    f.setSize(width, height);
     f.add(new Canvas {
         def paint(_this: Canvas, g: Graphics): Unit \ IO = {
             g.setColor(Color.red);
             // set Font
             g.setFont(new Font("Bold", 1, 20));
             // draw a string
-            g.drawString(title, dim#w/8, dim#h/6)
+            g.drawString(title, width/8, height/6)
         }
     });
     f.setResizable(false);
     f.setVisible(true);
-    (f, waitForClose)
+    {frame = f, waitForExit = waitForClose}
 }
 
 def addOnExitListener(f: Unit -> Unit \ ef, frame: JFrame): Unit \ IO = {
