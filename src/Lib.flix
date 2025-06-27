@@ -16,8 +16,12 @@ mod Graphics {
         title = String,
         height = Int32,
         width = Int32,
-        init = Graphics2D -> Unit \ ef1,
+        init = Drawing -> Unit \ ef1,
         mouseListener = MouseListener[ef2, ef3, ef4, ef5, ef6, ef7]
+    }
+
+    pub enum Drawing {
+        case Drawing(Graphics2D)
     }
 
     pub enum MouseButton with Eq {
@@ -28,9 +32,9 @@ mod Graphics {
     }
 
     pub type alias MouseListener[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff] = {
-        onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Graphics2D -> Unit \ ef1] \ ef2,
-        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Graphics2D -> Unit \ ef3] \ ef4,
-        onDrag = {x = Int32, y = Int32} -> Option[Graphics2D -> Unit \ ef5] \ ef6
+        onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef1] \ ef2,
+        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef3] \ ef4,
+        onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6
     }
 
     pub def runApp(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7]): Unit \ IO + ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 = {
@@ -48,12 +52,14 @@ mod Graphics {
         case Red
     }
 
-    pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics2D): Unit \ IO = {
+    pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, d: Drawing): Unit \ IO = {
+        let Drawing.Drawing(g) = d;
         setColorMode(color, g);
         g.fillRect(corner#x, corner#y, dim#width, dim#height)
     }
 
-    pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, g: Graphics2D): Unit \ IO = {
+    pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, d: Drawing): Unit \ IO = {
+        let Drawing.Drawing(g) = d;
         setColorMode(color, g);
         let offset = radius#radius / 2;
         g.fillOval(center#x - offset, center#y - offset, radius#radius, radius#radius)
@@ -78,7 +84,7 @@ mod Graphics {
         f.setSize(width, height);
         let image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         let initG = image.createGraphics();
-        init(initG);
+        init(Drawing.Drawing(initG));
         initG.dispose();
         let base = new JComponent {
             def paint(_this: JComponent, g: JGraphics): Unit \ IO = {
@@ -158,9 +164,9 @@ mod Graphics {
             case _ => MouseButton.Unknown
         }
 
-    def paintImage(paint: Graphics2D -> Unit \ ef, base: JComponent, image: BufferedImage): Unit \ IO + ef = {
+    def paintImage(paint: Drawing -> Unit \ ef, base: JComponent, image: BufferedImage): Unit \ IO + ef = {
         let g = image.createGraphics();
-        paint(g);
+        paint(Drawing.Drawing(g));
         g.dispose();
         base.repaint()
     }
