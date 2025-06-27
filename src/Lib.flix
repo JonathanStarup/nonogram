@@ -47,9 +47,18 @@ mod Graphics {
         })
     }
 
-    pub enum Color {
+    pub enum Color with Eq {
         case Black
+        case Blue
+        case Cyan
+        case Gray
+        case Green
+        case Magenta
+        case Orange
+        case Pink
         case Red
+        case White
+        case Yellow
     }
 
     pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, d: Drawing): Unit \ IO = {
@@ -174,8 +183,17 @@ mod Graphics {
 
     def setColorMode(color: Color, g: Graphics2D): Unit \ IO =
         match color {
-            case Color.Black => g.setColor(JColor.black)
-            case Color.Red => g.setColor(JColor.red)
+            case Color.Black   => g.setColor(JColor.black)
+            case Color.Blue    => g.setColor(JColor.blue)
+            case Color.Cyan    => g.setColor(JColor.cyan)
+            case Color.Gray    => g.setColor(JColor.gray)
+            case Color.Green   => g.setColor(JColor.green)
+            case Color.Magenta => g.setColor(JColor.magenta)
+            case Color.Orange  => g.setColor(JColor.orange)
+            case Color.Pink    => g.setColor(JColor.pink)
+            case Color.Red     => g.setColor(JColor.red)
+            case Color.White   => g.setColor(JColor.white)
+            case Color.Yellow  => g.setColor(JColor.yellow)
         }
 
 }
