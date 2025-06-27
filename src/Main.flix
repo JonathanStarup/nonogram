@@ -17,31 +17,45 @@ use Graphics.runApp
 def main(): Unit \ IO = region rc {
     let isPainting = Ref.fresh(rc, false);
     let paint = Ref.fresh(rc, Color.Orange);
+    def paintCornerBlip(d) = {
+        Graphics.fillRect({x = 0, y = 0}, {width = 14, height = 14}, Color.White, d);
+        Graphics.fillRect({x = 0, y = 0}, {width = 12, height = 12}, Color.Black, d);
+        Graphics.fillRect({x = 0, y = 0}, {width = 10, height = 10}, Ref.get(paint), d)
+    };
+    def init(d) = {
+        Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Color.Black, d);
+        paintCornerBlip(d)
+    };
+    def onPress(event) = {
+        isPainting |> Ref.put(match event#but {
+            case MouseButton.Left => true
+            case _ => false
+        });
+        match event#but {
+            case MouseButton.Left =>
+                Some(d -> {
+                    Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
+                    paintCornerBlip(d)
+                })
+            case MouseButton.Right =>
+                Ref.transform(nextColor, paint);
+                Some(paintCornerBlip)
+            case _ => None
+        }
+    };
     runApp({
         title = "Demo",
         width = 800,
         height = 450,
-        init = g -> {
-            Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Graphics.Color.Black, g)
-        },
+        init = init,
         mouseListener = {
-            onPress = event -> {
-                isPainting |> Ref.put(match event#but {
-                    case MouseButton.Left => true
-                    case _ => false
-                });
-                match event#but {
-                    case MouseButton.Right => Ref.transform(nextColor, paint)
-                    case _ => ()
-                };
-                if (Ref.get(isPainting)) {
-                    Some(Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint)))
-                } else None
-            },
+            onPress = onPress,
             onRelease = _ -> None,
             onDrag = event -> {
-                if (Ref.get(isPainting)) Some(Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint)))
-                else None
+                if (Ref.get(isPainting)) Some(d -> {
+                    Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
+                    paintCornerBlip(d)
+                }) else None
             }
         }
     })
