@@ -20,10 +20,17 @@ mod Graphics {
         mouseListener = MouseListener[ef2, ef3, ef4, ef5, ef6, ef7]
     }
 
+    pub enum MouseButton with Eq {
+        case Left
+        case Middle
+        case Right
+        case Unknown
+    }
+
     pub type alias MouseListener[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff] = {
-        onPress = MouseEvent -> Option[Graphics2D -> Unit \ ef1] \ ef2,
-        onRelease = MouseEvent -> Option[Graphics2D -> Unit \ ef3] \ ef4,
-        onDrag = MouseEvent -> Option[Graphics2D -> Unit \ ef5] \ ef6
+        onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Graphics2D -> Unit \ ef1] \ ef2,
+        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Graphics2D -> Unit \ ef3] \ ef4,
+        onDrag = {x = Int32, y = Int32} -> Option[Graphics2D -> Unit \ ef5] \ ef6
     }
 
     pub def runApp(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7]): Unit \ IO + ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 = {
@@ -111,41 +118,53 @@ mod Graphics {
             def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef1 + ef2 + IO = {
-                match listener#onPress(event) {
-                    case None => ()
-                    case Some(paint) =>
-                        let g = image.createGraphics();
-                        paint(g);
-                        g.dispose();
-                        base.repaint()
-                }
+                let eventRec = {
+                    x = event.getX(),
+                    y = event.getY(),
+                    but = getMouseButton(event)
+                };
+                listener#onPress(eventRec) |>
+                    Option.forEach(paint -> paintImage(paint, base, image))
             }
             def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef3 + ef4 + IO = {
-                match listener#onRelease(event) {
-                    case None => ()
-                    case Some(paint) =>
-                        let g = image.createGraphics();
-                        paint(g);
-                        g.dispose();
-                        base.repaint()
-                }
+                let eventRec = {
+                    x = event.getX(),
+                    y = event.getY(),
+                    but = getMouseButton(event)
+                };
+                listener#onRelease(eventRec) |>
+                    Option.forEach(paint -> paintImage(paint, base, image))
             }
         });
         base.addMouseMotionListener(new JMouseMotionListener {
             def mouseMoved(_this: JMouseMotionListener, _event: MouseEvent): Unit = ()
             def mouseDragged(_this: JMouseMotionListener, event: MouseEvent): Unit \ ef5 + ef6 + IO = {
-                match listener#onDrag(event) {
-                    case None => ()
-                    case Some(paint) =>
-                        let g = image.createGraphics();
-                        paint(g);
-                        g.dispose();
-                        base.repaint()
-                }
+                let eventRec = {
+                    x = event.getX(),
+                    y = event.getY()
+                };
+                listener#onDrag(eventRec) |>
+                    Option.forEach(paint -> paintImage(paint, base, image))
             }
         })
     }
+
+    def getMouseButton(event: MouseEvent): MouseButton =
+        match unsafely IO run event.getButton() {
+            case but if but == unsafely IO run MouseEvent.BUTTON1 => MouseButton.Left
+            case but if but == unsafely IO run MouseEvent.BUTTON2 => MouseButton.Middle
+            case but if but == unsafely IO run MouseEvent.BUTTON3 => MouseButton.Right
+            case _ => MouseButton.Unknown
+        }
+
+    def paintImage(paint: Graphics2D -> Unit \ ef, base: JComponent, image: BufferedImage): Unit \ IO + ef = {
+        let g = image.createGraphics();
+        paint(g);
+        g.dispose();
+        base.repaint()
+    }
+
 
     def setColorMode(color: Color, g: Graphics2D): Unit \ IO =
         match color {

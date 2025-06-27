@@ -12,6 +12,7 @@ import javax.swing.JFrame
 
 use Graphics.Color
 use Graphics.runApp
+use Graphics.MouseButton
 
 def main(): Unit \ IO = region rc {
     let paint = Ref.fresh(rc, Color.Black);
@@ -24,13 +25,13 @@ def main(): Unit \ IO = region rc {
         },
         mouseListener = {
             onPress = event -> Some(g -> {
-                if (event.getButton() == MouseEvent.BUTTON1) Ref.put(Color.Red, paint)
+                if (event#but == MouseButton.Left) Ref.put(Color.Red, paint)
                 else Ref.put(Color.Black, paint);
-                Graphics.fillCircle({x = event.getX(), y = event.getY()}, {radius = 20}, Ref.get(paint), g)
+                Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), g)
             }),
             onRelease = _ -> None,
             onDrag = event -> Some(g -> {
-                Graphics.fillCircle({x = event.getX(), y = event.getY()}, {radius = 20}, Ref.get(paint), g)
+                Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), g)
             })
         }
     })
