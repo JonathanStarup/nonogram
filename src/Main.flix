@@ -17,13 +17,15 @@ use Graphics.runApp
 def main(): Unit \ IO = region rc {
     let isPainting = Ref.fresh(rc, false);
     let paint = Ref.fresh(rc, Color.Orange);
+    let width = 1200;
+    let height = 800;
     def paintCornerBlip(d) = {
         Graphics.fillRect({x = 0, y = 0}, {width = 14, height = 14}, Color.White, d);
         Graphics.fillRect({x = 0, y = 0}, {width = 12, height = 12}, Color.Black, d);
         Graphics.fillRect({x = 0, y = 0}, {width = 10, height = 10}, Ref.get(paint), d)
     };
     def init(d) = {
-        Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Color.Black, d);
+        Graphics.fillRect({x = 0, y = 0}, {width = width, height = height}, Color.Black, d);
         paintCornerBlip(d)
     };
     def onPress(event) = {
@@ -45,8 +47,8 @@ def main(): Unit \ IO = region rc {
     };
     runApp({
         title = "Demo",
-        width = 800,
-        height = 450,
+        width = width,
+        height = height,
         init = init,
         mouseListener = {
             onPress = onPress,
