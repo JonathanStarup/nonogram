@@ -25,18 +25,18 @@ def main(): Unit \ IO = region rc {
             Graphics.fillRect({x = 0, y = 0}, {width = 800, height = 450}, Graphics.Color.Black, g)
         },
         mouseListener = {
-            onPress = event -> match event#but {
-                case MouseButton.Left => Some(d -> {
-                    Ref.put(true, isPainting);
-                    Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d)
-                })
-                case MouseButton.Right =>
-                    Ref.put(false, isPainting);
-                    Ref.transform(nextColor, paint);
-                    None
-                case _ =>
-                    Ref.put(false, isPainting);
-                    None
+            onPress = event -> {
+                isPainting |> Ref.put(match event#but {
+                    case MouseButton.Left => true
+                    case _ => false
+                });
+                match event#but {
+                    case MouseButton.Right => Ref.transform(nextColor, paint)
+                    case _ => ()
+                };
+                if (Ref.get(isPainting)) {
+                    Some(Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint)))
+                } else None
             },
             onRelease = _ -> None,
             onDrag = event -> {
