@@ -42,12 +42,12 @@ mod Graphics {
     }
 
     pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, g: Graphics2D): Unit \ IO = {
-        colorSwap(color, g);
+        setColorMode(color, g);
         g.fillRect(corner#x, corner#y, dim#width, dim#height)
     }
 
     pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, g: Graphics2D): Unit \ IO = {
-        colorSwap(color, g);
+        setColorMode(color, g);
         let offset = radius#radius / 2;
         g.fillOval(center#x - offset, center#y - offset, radius#radius, radius#radius)
     }
@@ -147,7 +147,7 @@ mod Graphics {
         })
     }
 
-    def colorSwap(color: Color, g: Graphics2D): Unit \ IO =
+    def setColorMode(color: Color, g: Graphics2D): Unit \ IO =
         match color {
             case Color.Black => g.setColor(JColor.black)
             case Color.Red => g.setColor(JColor.red)
