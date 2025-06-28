@@ -1,17 +1,5 @@
 mod Examples.Paint {
 
-import java.awt.{Graphics => JGraphics}
-import java.awt.event.{MouseListener => JMouseListener}
-import java.awt.event.{MouseMotionListener => JMouseMotionListener}
-import java.awt.event.MouseEvent
-import java.awt.event.WindowEvent
-import java.awt.event.WindowListener
-import java.awt.Graphics2D
-import java.awt.image.BufferedImage
-import java.awt.image.ImageObserver
-import javax.swing.JComponent
-import javax.swing.JFrame
-
 use Graphics.Color
 use Graphics.MouseButton
 use Graphics.runApp
