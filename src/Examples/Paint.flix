@@ -1,21 +1,39 @@
 mod Examples.Paint {
+    use Graphics.drawRect
 
 use Graphics.Color
 use Graphics.MouseButton
 use Graphics.runApp
 
 pub def main(): Unit \ IO = region rc {
-    let isPainting = Ref.fresh(rc, false);
-    let paint = Ref.fresh(rc, Color.Orange);
     let width = 1200;
     let height = 800;
+    def sizeFont(c) = {
+        size = 20f32,
+        color = c,
+        bold = false,
+        italic = false
+    };
+    let isPainting = Ref.fresh(rc, false);
+    let paint = Ref.fresh(rc, Color.Orange);
+    let size = Ref.fresh(rc, 5);
     def drawColorIndicator(d) = {
-        Graphics.drawCircle({x = width/2, y = -5}, {radius = 50}, Color.Black, d);
-        Graphics.drawCircle({x = width/2, y = -5}, {radius = 45}, Color.White, d);
-        Graphics.drawCircle({x = width/2, y = -5}, {radius = 40}, Ref.get(paint), d)
+        Graphics.drawOval({x = width/2, y = 0}, {width = 140, height = 70}, Color.White, d);
+        Graphics.drawOval({x = width/2, y = 0}, {width = 135, height = 65}, Color.Black, d);
+        Graphics.drawOval({x = width/2, y = 0}, {width = 130, height = 60}, Ref.get(paint), d)
+    };
+    def drawSizeIndicator(d) = {
+        Graphics.drawOval({x = width/2, y = height}, {width = 140, height = 70}, Color.Black, d);
+        Graphics.drawOval({x = width/2, y = height}, {width = 135, height = 65}, Color.White, d);
+        Graphics.drawText({x = width/2, y = height-8}, Ref.get(size) |> ToString.toString, sizeFont(Color.Black), d)
+    };
+    def drawUI(d) = {
+        drawColorIndicator(d);
+        drawSizeIndicator(d)
     };
     def init(d) = {
-        drawColorIndicator(d)
+        drawRect({x = 0, y = 0}, {width = width, height = height}, Color.White, d);
+        drawUI(d)
     };
     def onPress(event) = {
         isPainting |> Ref.put(match event#but {
@@ -26,11 +44,11 @@ pub def main(): Unit \ IO = region rc {
             case MouseButton.Left =>
                 Some(d -> {
                     Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
-                    drawColorIndicator(d)
+                    drawUI(d)
                 })
             case MouseButton.Right =>
                 Ref.transform(nextColor, paint);
-                Some(drawColorIndicator)
+                Some(drawUI)
             case _ => None
         }
     };
@@ -45,7 +63,7 @@ pub def main(): Unit \ IO = region rc {
             onDrag = event -> {
                 if (Ref.get(isPainting)) Some(d -> {
                     Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
-                    drawColorIndicator(d)
+                    drawUI(d)
                 }) else None
             }
         }

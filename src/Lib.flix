@@ -1,12 +1,13 @@
 mod Graphics {
     import java.awt.{Color => JColor}
+    import java.awt.{Font => JFont}
     import java.awt.{Graphics => JGraphics}
+    import java.awt.Dimension
     import java.awt.event.{MouseListener => JMouseListener}
     import java.awt.event.{MouseMotionListener => JMouseMotionListener}
     import java.awt.event.MouseEvent
     import java.awt.event.WindowEvent
     import java.awt.event.WindowListener
-    import java.awt.{Font => JFont}
     import java.awt.Graphics2D
     import java.awt.image.BufferedImage
     import java.awt.image.ImageObserver
@@ -83,6 +84,12 @@ mod Graphics {
         g.fillOval(center#x - offset, center#y - offset, radius#radius, radius#radius)
     }
 
+    pub def drawOval(center: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, d: Drawing): Unit \ IO = {
+        let Drawing.Drawing(g) = d;
+        setColorMode(color, g);
+        g.fillOval(center#x - dim#width/2, center#y - dim#height/2, dim#width, dim#height)
+    }
+
     pub type alias Font = {
         size = Float32,
         color = Color,
@@ -123,7 +130,6 @@ mod Graphics {
         let f = new JFrame(title);
         f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         f |> addOnExitListener(() -> Channel.send((), send));
-        f.setSize(width, height);
         let image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         let initG = image.createGraphics();
         let drawing = Drawing.Drawing(initG);
@@ -134,9 +140,13 @@ mod Graphics {
             def paint(_this: JComponent, g: JGraphics): Unit \ IO = {
                 discard g.drawImage(image, 0, 0, unchecked_cast(null as ImageObserver))
             }
+            def getPreferredSize(_this: JComponent): Dimension \ IO = {
+                new Dimension(width, height)
+            }
         };
         base |> addMouseListener(image, mouseListener);
         f.add(base);
+        f.pack();
         touchEff((ProxyEff.Proxy: ProxyEff[ef1]));
         f.setResizable(false);
         f.setVisible(true);
