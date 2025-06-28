@@ -18,12 +18,12 @@ mod Graphics {
 
     type alias Test[t1: Type, t1: Eff] = Int32
 
-    pub type alias App[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff, ef7: Eff, ef8: Eff, ef9: Eff] = {
+    pub type alias App[ef1: Eff, ef2: Eff] = {
         title = String,
         height = Int32,
         width = Int32,
         init = Drawing -> Unit \ ef1,
-        mouseListener = MouseListener[ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9]
+        mouseListener = MouseListener[ef2]
     }
 
     pub enum Drawing {
@@ -37,15 +37,28 @@ mod Graphics {
         case Unknown
     }
 
-    pub type alias MouseListener[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff, ef7: Eff, ef8: Eff] = {
-        onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef1] \ ef2,
-        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef3] \ ef4,
-        onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6,
-        onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef7] \ ef8
+    pub type alias MouseListener[ef: Eff] = {
+        onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef] \ ef,
+        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef] \ ef,
+        onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef] \ ef,
+        onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef] \ ef
     }
 
     mod MouseListener {
-        pub def empty(): MouseListener[{}, {}, {}, {}, {}, {}, {}, {}] = {
+        use Graphics.MouseButton
+        use Graphics.Drawing
+        pub def mk(listener: {
+            onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef1] \ ef2,
+            onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef3] \ ef4,
+            onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6,
+            onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef7] \ ef8
+        }): MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8] = {
+            unchecked_cast(listener as MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8])
+        }
+    }
+
+    mod MouseListener {
+        pub def empty(): MouseListener[{}] = {
             onPress = _ -> None,
             onRelease = _ -> None,
             onDrag = _ -> None,
@@ -53,7 +66,7 @@ mod Graphics {
         }
     }
 
-    pub def runApp(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9]): Unit \ IO + ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8 + ef9 = {
+    pub def runApp(config: App[ef1, ef2]): Unit \ IO + ef1 + ef2 = {
         // The channel is enclosed so the Chan effect can be removed.
         checked_ecast(unsafely Chan run {
             let {frame = _, waitForExit} = makeFrame(config);
@@ -125,7 +138,7 @@ mod Graphics {
         waitForExit = Unit -> Unit \ Chan
     }
 
-    def makeFrame(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9]): Frame \ IO + Chan + ef1 = {
+    def makeFrame(config: App[ef1, ef2]): Frame \ IO + Chan + ef1 = {
         let {title, height, width, init, mouseListener} = config;
         let (send, recv) = Channel.buffered(1);
         def waitForClose() = {
@@ -179,11 +192,11 @@ mod Graphics {
 
     def touchEff(_: ProxyEff[ef]): Unit \ ef = checked_ecast(())
 
-    def addMouseListener(image: BufferedImage, listener: MouseListener[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8], base: JComponent): Unit \ IO = {
+    def addMouseListener(image: BufferedImage, listener: MouseListener[ef], base: JComponent): Unit \ IO = {
         base.addMouseListener(new JMouseListener {
             def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
-            def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef1 + ef2 + IO = {
+            def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO = {
                 let eventRec = {
                     x = event.getX(),
                     y = event.getY(),
@@ -193,7 +206,7 @@ mod Graphics {
                     Option.forEach(paint -> paintImage(paint, base, image))
             }
             def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
-            def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef3 + ef4 + IO = {
+            def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO = {
                 let eventRec = {
                     x = event.getX(),
                     y = event.getY(),
@@ -205,7 +218,7 @@ mod Graphics {
         });
         base.addMouseMotionListener(new JMouseMotionListener {
             def mouseMoved(_this: JMouseMotionListener, _event: MouseEvent): Unit = ()
-            def mouseDragged(_this: JMouseMotionListener, event: MouseEvent): Unit \ ef5 + ef6 + IO = {
+            def mouseDragged(_this: JMouseMotionListener, event: MouseEvent): Unit \ ef + IO = {
                 let eventRec = {
                     x = event.getX(),
                     y = event.getY()
@@ -215,7 +228,7 @@ mod Graphics {
             }
         });
         base.addMouseWheelListener(new JMouseWheelListener {
-            def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef7 + ef8 + IO = {
+            def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef + IO = {
                 listener#onScroll({amount = event.getWheelRotation()}) |>
                     Option.forEach(paint -> paintImage(paint, base, image))
             }

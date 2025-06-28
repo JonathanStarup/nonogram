@@ -4,6 +4,7 @@ mod Examples.Paint {
 use Graphics.Color
 use Graphics.MouseButton
 use Graphics.runApp
+use Graphics.MouseListener
 
 pub def main(): Unit \ IO = region rc {
     let width = 1200;
@@ -31,6 +32,9 @@ pub def main(): Unit \ IO = region rc {
         drawColorIndicator(d);
         drawSizeIndicator(d)
     };
+    def paintSpot(center, d) = {
+        Graphics.drawCircle(center, {radius = Ref.get(size) * 5}, Ref.get(paint), d)
+    };
     def init(d) = {
         drawRect({x = 0, y = 0}, {width = width, height = height}, Color.White, d);
         drawUI(d)
@@ -43,7 +47,7 @@ pub def main(): Unit \ IO = region rc {
         match event#but {
             case MouseButton.Left =>
                 Some(d -> {
-                    Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
+                    paintSpot({x = event#x, y = event#y}, d);
                     drawUI(d)
                 })
             case MouseButton.Right =>
@@ -57,25 +61,25 @@ pub def main(): Unit \ IO = region rc {
         width = width,
         height = height,
         init = init,
-        mouseListener = {
+        mouseListener = MouseListener.mk({
             onPress = onPress,
             onRelease = _ -> None,
             onDrag = event -> {
                 if (Ref.get(isPainting)) Some(d -> {
-                    Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
+                    paintSpot({x = event#x, y = event#y}, d);
                     drawUI(d)
                 }) else None
             },
             onScroll = event -> {
-                if (event#amount > 0 ) Some(d -> {
-                    Ref.transform(val -> val + 1, size);
-                    drawUI(d)
-                }) else if (event#amount < 0 ) Some(d -> {
+                if (event#amount > 0 and Ref.get(size) > 1) Some(d -> {
                     Ref.transform(val -> val - 1, size);
+                    drawUI(d)
+                }) else if (event#amount < 0) Some(d -> {
+                    Ref.transform(val -> val + 1, size);
                     drawUI(d)
                 }) else None
             }
-        }
+        })
     })
 }
 
