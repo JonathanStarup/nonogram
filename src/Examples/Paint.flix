@@ -1,3 +1,5 @@
+mod Examples.Paint {
+
 import java.awt.{Graphics => JGraphics}
 import java.awt.event.{MouseListener => JMouseListener}
 import java.awt.event.{MouseMotionListener => JMouseMotionListener}
@@ -14,7 +16,7 @@ use Graphics.Color
 use Graphics.MouseButton
 use Graphics.runApp
 
-def main(): Unit \ IO = region rc {
+pub def main(): Unit \ IO = region rc {
     let isPainting = Ref.fresh(rc, false);
     let paint = Ref.fresh(rc, Color.Orange);
     def paintCornerBlip(d) = {
@@ -73,4 +75,6 @@ def nextColor(c: Color): Color = match c {
     case Color.Red     => Color.Pink
     case Color.White   => Color.Red
     case Color.Yellow  => Color.White
+}
+
 }
