@@ -6,6 +6,7 @@ mod Graphics {
     import java.awt.event.MouseEvent
     import java.awt.event.WindowEvent
     import java.awt.event.WindowListener
+    import java.awt.{Font => JFont}
     import java.awt.Graphics2D
     import java.awt.image.BufferedImage
     import java.awt.image.ImageObserver
@@ -69,17 +70,41 @@ mod Graphics {
         case Yellow
     }
 
-    pub def fillRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, d: Drawing): Unit \ IO = {
+    pub def drawRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, d: Drawing): Unit \ IO = {
         let Drawing.Drawing(g) = d;
         setColorMode(color, g);
         g.fillRect(corner#x, corner#y, dim#width, dim#height)
     }
 
-    pub def fillCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, d: Drawing): Unit \ IO = {
+    pub def drawCircle(center: {x = Int32, y = Int32}, radius: {radius = Int32}, color: Color, d: Drawing): Unit \ IO = {
         let Drawing.Drawing(g) = d;
         setColorMode(color, g);
         let offset = radius#radius / 2;
         g.fillOval(center#x - offset, center#y - offset, radius#radius, radius#radius)
+    }
+
+    pub type alias Font = {
+        size = Float32,
+        color = Color,
+        bold = Bool,
+        italic = Bool
+    }
+
+    pub def drawText(corner: {x = Int32, y = Int32}, s: String, font: Font, d: Drawing): Unit \ IO = {
+        let Drawing.Drawing(g) = d;
+        setFontMode(font, g);
+        g.drawString(s, corner#x, corner#y)
+    }
+
+    pub def drawTextCenter(center: {x = Int32, y = Int32}, s: String, font: Font, d: Drawing): Unit \ IO = {
+        let Drawing.Drawing(g) = d;
+        setFontMode(font, g);
+        let metrics = g.getFontMetrics();
+        let width = metrics.stringWidth(s);
+        let height = metrics.getHeight();
+        let x = center#x - width/2;
+        let y = center#y + height/2;
+        g.drawString(s, x, y)
     }
 
     type alias Frame = {
@@ -102,7 +127,7 @@ mod Graphics {
         let image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         let initG = image.createGraphics();
         let drawing = Drawing.Drawing(initG);
-        fillRect({x = 0, y = 0}, {height = height, width = width}, Color.Black, drawing);
+        drawRect({x = 0, y = 0}, {height = height, width = width}, Color.Black, drawing);
         init(drawing);
         initG.dispose();
         let base = new JComponent {
@@ -205,5 +230,15 @@ mod Graphics {
             case Color.White   => g.setColor(JColor.white)
             case Color.Yellow  => g.setColor(JColor.yellow)
         }
+
+    def setFontMode(font: Font, g: Graphics2D): Unit \ IO = {
+        let {size, color, bold, italic} = font;
+        setColorMode(color, g);
+        let g0 = g.getFont();
+        let g1 = g0.deriveFont(size);
+        let g2 = if (bold) g1.deriveFont(JFont.BOLD) else g1;
+        let g3 = if (italic) g2.deriveFont(JFont.ITALIC) else g2;
+        g.setFont(g3)
+    }
 
 }

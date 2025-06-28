@@ -1,0 +1,39 @@
+mod Examples.Asteroids {
+
+use Graphics.Color
+use Graphics.drawText
+use Graphics.drawTextCenter
+use Graphics.MouseButton
+use Graphics.MouseListener
+use Graphics.runApp
+
+pub def main(): Unit \ IO = {
+    let height = 800;
+    let width = 1200;
+    let textColor = Color.Orange;
+    let titleFont = {
+        size = 90f32,
+        color = textColor,
+        italic = false,
+        bold = true
+    };
+    let subtitleFont = {
+        size = 30f32,
+        color = textColor,
+        italic = true,
+        bold = false
+    };
+    def init(d) = {
+        drawTextCenter({x = width/2, y = 1*height/4}, "~ ~ Astroids ~ ~", titleFont, d);
+        drawTextCenter({x = width/2, y = 2*height/4}, "press enter to play", subtitleFont, d)
+    };
+    runApp({
+        title = "Physics",
+        width = width,
+        height = height,
+        init = init,
+        mouseListener = MouseListener.empty()
+    })
+}
+
+}

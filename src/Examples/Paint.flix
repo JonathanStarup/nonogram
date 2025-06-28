@@ -10,9 +10,9 @@ pub def main(): Unit \ IO = region rc {
     let width = 1200;
     let height = 800;
     def paintCornerBlip(d) = {
-        Graphics.fillRect({x = 0, y = 0}, {width = 14, height = 14}, Color.White, d);
-        Graphics.fillRect({x = 0, y = 0}, {width = 12, height = 12}, Color.Black, d);
-        Graphics.fillRect({x = 0, y = 0}, {width = 10, height = 10}, Ref.get(paint), d)
+        Graphics.drawRect({x = 0, y = 0}, {width = 14, height = 14}, Color.White, d);
+        Graphics.drawRect({x = 0, y = 0}, {width = 12, height = 12}, Color.Black, d);
+        Graphics.drawRect({x = 0, y = 0}, {width = 10, height = 10}, Ref.get(paint), d)
     };
     def init(d) = {
         paintCornerBlip(d)
@@ -25,7 +25,7 @@ pub def main(): Unit \ IO = region rc {
         match event#but {
             case MouseButton.Left =>
                 Some(d -> {
-                    Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
+                    Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
                     paintCornerBlip(d)
                 })
             case MouseButton.Right =>
@@ -44,7 +44,7 @@ pub def main(): Unit \ IO = region rc {
             onRelease = _ -> None,
             onDrag = event -> {
                 if (Ref.get(isPainting)) Some(d -> {
-                    Graphics.fillCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
+                    Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
                     paintCornerBlip(d)
                 }) else None
             }
