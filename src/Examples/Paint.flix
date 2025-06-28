@@ -9,13 +9,13 @@ pub def main(): Unit \ IO = region rc {
     let paint = Ref.fresh(rc, Color.Orange);
     let width = 1200;
     let height = 800;
-    def paintCornerBlip(d) = {
-        Graphics.drawRect({x = 0, y = 0}, {width = 14, height = 14}, Color.White, d);
-        Graphics.drawRect({x = 0, y = 0}, {width = 12, height = 12}, Color.Black, d);
-        Graphics.drawRect({x = 0, y = 0}, {width = 10, height = 10}, Ref.get(paint), d)
+    def drawColorIndicator(d) = {
+        Graphics.drawCircle({x = width/2, y = -5}, {radius = 50}, Color.Black, d);
+        Graphics.drawCircle({x = width/2, y = -5}, {radius = 45}, Color.White, d);
+        Graphics.drawCircle({x = width/2, y = -5}, {radius = 40}, Ref.get(paint), d)
     };
     def init(d) = {
-        paintCornerBlip(d)
+        drawColorIndicator(d)
     };
     def onPress(event) = {
         isPainting |> Ref.put(match event#but {
@@ -26,11 +26,11 @@ pub def main(): Unit \ IO = region rc {
             case MouseButton.Left =>
                 Some(d -> {
                     Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
-                    paintCornerBlip(d)
+                    drawColorIndicator(d)
                 })
             case MouseButton.Right =>
                 Ref.transform(nextColor, paint);
-                Some(paintCornerBlip)
+                Some(drawColorIndicator)
             case _ => None
         }
     };
@@ -45,7 +45,7 @@ pub def main(): Unit \ IO = region rc {
             onDrag = event -> {
                 if (Ref.get(isPainting)) Some(d -> {
                     Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
-                    paintCornerBlip(d)
+                    drawColorIndicator(d)
                 }) else None
             }
         }
