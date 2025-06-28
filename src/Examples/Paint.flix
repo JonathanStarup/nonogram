@@ -15,7 +15,6 @@ pub def main(): Unit \ IO = region rc {
         Graphics.fillRect({x = 0, y = 0}, {width = 10, height = 10}, Ref.get(paint), d)
     };
     def init(d) = {
-        Graphics.fillRect({x = 0, y = 0}, {width = width, height = height}, Color.Black, d);
         paintCornerBlip(d)
     };
     def onPress(event) = {

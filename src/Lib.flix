@@ -37,6 +37,14 @@ mod Graphics {
         onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6
     }
 
+    mod MouseListener {
+        pub def empty(): MouseListener[{}, {}, {}, {}, {}, {}] = {
+            onPress = _ -> None,
+            onRelease = _ -> None,
+            onDrag = _ -> None
+        }
+    }
+
     pub def runApp(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7]): Unit \ IO + ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 = {
         // The channel is enclosed so the Chan effect can be removed.
         checked_ecast(unsafely Chan run {
@@ -93,7 +101,9 @@ mod Graphics {
         f.setSize(width, height);
         let image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         let initG = image.createGraphics();
-        init(Drawing.Drawing(initG));
+        let drawing = Drawing.Drawing(initG);
+        fillRect({x = 0, y = 0}, {height = height, width = width}, Color.Black, drawing);
+        init(drawing);
         initG.dispose();
         let base = new JComponent {
             def paint(_this: JComponent, g: JGraphics): Unit \ IO = {
