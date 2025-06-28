@@ -65,6 +65,15 @@ pub def main(): Unit \ IO = region rc {
                     Graphics.drawCircle({x = event#x, y = event#y}, {radius = 20}, Ref.get(paint), d);
                     drawUI(d)
                 }) else None
+            },
+            onScroll = event -> {
+                if (event#amount > 0 ) Some(d -> {
+                    Ref.transform(val -> val + 1, size);
+                    drawUI(d)
+                }) else if (event#amount < 0 ) Some(d -> {
+                    Ref.transform(val -> val - 1, size);
+                    drawUI(d)
+                }) else None
             }
         }
     })

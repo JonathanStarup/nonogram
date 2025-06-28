@@ -5,7 +5,9 @@ mod Graphics {
     import java.awt.Dimension
     import java.awt.event.{MouseListener => JMouseListener}
     import java.awt.event.{MouseMotionListener => JMouseMotionListener}
+    import java.awt.event.{MouseWheelListener => JMouseWheelListener}
     import java.awt.event.MouseEvent
+    import java.awt.event.MouseWheelEvent
     import java.awt.event.WindowEvent
     import java.awt.event.WindowListener
     import java.awt.Graphics2D
@@ -14,12 +16,14 @@ mod Graphics {
     import javax.swing.JComponent
     import javax.swing.JFrame
 
-    pub type alias App[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff, ef7: Eff] = {
+    type alias Test[t1: Type, t1: Eff] = Int32
+
+    pub type alias App[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff, ef7: Eff, ef8: Eff, ef9: Eff] = {
         title = String,
         height = Int32,
         width = Int32,
         init = Drawing -> Unit \ ef1,
-        mouseListener = MouseListener[ef2, ef3, ef4, ef5, ef6, ef7]
+        mouseListener = MouseListener[ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9]
     }
 
     pub enum Drawing {
@@ -33,21 +37,23 @@ mod Graphics {
         case Unknown
     }
 
-    pub type alias MouseListener[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff] = {
+    pub type alias MouseListener[ef1: Eff, ef2: Eff, ef3: Eff, ef4: Eff, ef5: Eff, ef6: Eff, ef7: Eff, ef8: Eff] = {
         onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef1] \ ef2,
         onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef3] \ ef4,
-        onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6
+        onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6,
+        onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef7] \ ef8
     }
 
     mod MouseListener {
-        pub def empty(): MouseListener[{}, {}, {}, {}, {}, {}] = {
+        pub def empty(): MouseListener[{}, {}, {}, {}, {}, {}, {}, {}] = {
             onPress = _ -> None,
             onRelease = _ -> None,
-            onDrag = _ -> None
+            onDrag = _ -> None,
+            onScroll = _ -> None
         }
     }
 
-    pub def runApp(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7]): Unit \ IO + ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 = {
+    pub def runApp(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9]): Unit \ IO + ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8 + ef9 = {
         // The channel is enclosed so the Chan effect can be removed.
         checked_ecast(unsafely Chan run {
             let {frame = _, waitForExit} = makeFrame(config);
@@ -119,7 +125,7 @@ mod Graphics {
         waitForExit = Unit -> Unit \ Chan
     }
 
-    def makeFrame(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7]): Frame \ IO + Chan + ef1 = {
+    def makeFrame(config: App[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8, ef9]): Frame \ IO + Chan + ef1 = {
         let {title, height, width, init, mouseListener} = config;
         let (send, recv) = Channel.buffered(1);
         def waitForClose() = {
@@ -173,7 +179,7 @@ mod Graphics {
 
     def touchEff(_: ProxyEff[ef]): Unit \ ef = checked_ecast(())
 
-    def addMouseListener(image: BufferedImage, listener: MouseListener[ef1, ef2, ef3, ef4, ef5, ef6], base: JComponent): Unit \ IO = {
+    def addMouseListener(image: BufferedImage, listener: MouseListener[ef1, ef2, ef3, ef4, ef5, ef6, ef7, ef8], base: JComponent): Unit \ IO = {
         base.addMouseListener(new JMouseListener {
             def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
@@ -205,6 +211,12 @@ mod Graphics {
                     y = event.getY()
                 };
                 listener#onDrag(eventRec) |>
+                    Option.forEach(paint -> paintImage(paint, base, image))
+            }
+        });
+        base.addMouseWheelListener(new JMouseWheelListener {
+            def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef7 + ef8 + IO = {
+                listener#onScroll({amount = event.getWheelRotation()}) |>
                     Option.forEach(paint -> paintImage(paint, base, image))
             }
         })
