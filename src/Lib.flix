@@ -192,6 +192,7 @@ mod Graphics {
         (base, f) ||> addKeyListener(image, keyListener);
         f.add(base);
         f.pack();
+        f.setLocationRelativeTo(unchecked_cast(null as JComponent));
         touchEff((ProxyEff.Proxy: ProxyEff[ef1]));
         f.setResizable(false);
         f.setVisible(true);

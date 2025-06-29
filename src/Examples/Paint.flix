@@ -1,11 +1,11 @@
 mod Examples.Paint {
-    use Graphics.drawRect
 
 use Graphics.Color
-use Graphics.MouseButton
-use Graphics.runApp
-use Graphics.MouseListener
+use Graphics.drawRect
 use Graphics.KeyListener
+use Graphics.MouseButton
+use Graphics.MouseListener
+use Graphics.runApp
 
 pub def main(): Unit \ IO = region rc {
     let width = 1200;
@@ -27,7 +27,7 @@ pub def main(): Unit \ IO = region rc {
     def drawSizeIndicator(d) = {
         Graphics.drawOval({x = width/2, y = height}, {width = 140, height = 70}, Color.Black, d);
         Graphics.drawOval({x = width/2, y = height}, {width = 135, height = 65}, Color.White, d);
-        Graphics.drawText({x = width/2, y = height-8}, Ref.get(size) |> ToString.toString, sizeFont(Color.Black), d)
+        Graphics.drawTextCenter({x = width/2, y = height-20}, Ref.get(size) |> ToString.toString, sizeFont(Color.Black), d)
     };
     def drawUI(d) = {
         drawColorIndicator(d);
@@ -75,7 +75,7 @@ pub def main(): Unit \ IO = region rc {
                 if (event#amount > 0 and Ref.get(size) > 1) Some(d -> {
                     Ref.transform(val -> val - 1, size);
                     drawUI(d)
-                }) else if (event#amount < 0) Some(d -> {
+                }) else if (event#amount < 0 and Ref.get(size) < 99) Some(d -> {
                     Ref.transform(val -> val + 1, size);
                     drawUI(d)
                 }) else None
