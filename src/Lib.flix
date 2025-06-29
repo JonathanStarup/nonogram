@@ -187,8 +187,10 @@ mod Graphics {
         waitForExit = Unit -> Unit \ Chan
     }
 
-    def makeFrame(config: App[ef]): Frame \ IO + Chan + ef = {
-        let {title, height, width, init, mouseListener, keyListener} = config;
+    def makeFrame(config: App[ef]): Frame \ IO + Chan + ef = region rc {
+        let {title, height, width, init, mouseListener = mouseListener0, keyListener = keyListener0} = config;
+        let mouseListener = Ref.fresh(rc, mouseListener0);
+        let keyListener = Ref.fresh(rc, keyListener0);
         let (send, recv) = Channel.buffered(1);
         def waitForClose() = {
             // Unit only has one value, so no non-determinism.
@@ -236,41 +238,41 @@ mod Graphics {
         })
     }
 
-    def addMouseListener(image: BufferedImage, listener: MouseListener[ef], base: JComponent): Unit \ IO = {
+    def addMouseListener(image: BufferedImage, listener: Ref[MouseListener[ef], r], base: JComponent): Unit \ IO = {
         base.addMouseListener(new JMouseListener {
             def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
-            def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO = {
+            def mousePressed(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO + r = {
                 let eventRec = {
                     x = event.getX(),
                     y = event.getY(),
                     but = getMouseButton(event)
                 };
-                listener#onPress(eventRec) |> applyAction(base, image)
+                Ref.get(listener)#onPress(eventRec) |> applyAction(base, image)
             }
             def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
-            def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO = {
+            def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO + r = {
                 let eventRec = {
                     x = event.getX(),
                     y = event.getY(),
                     but = getMouseButton(event)
                 };
-                listener#onRelease(eventRec) |> applyAction(base, image)
+                Ref.get(listener)#onRelease(eventRec) |> applyAction(base, image)
             }
         });
         base.addMouseMotionListener(new JMouseMotionListener {
             def mouseMoved(_this: JMouseMotionListener, _event: MouseEvent): Unit = ()
-            def mouseDragged(_this: JMouseMotionListener, event: MouseEvent): Unit \ ef + IO = {
+            def mouseDragged(_this: JMouseMotionListener, event: MouseEvent): Unit \ ef + IO + r = {
                 let eventRec = {
                     x = event.getX(),
                     y = event.getY()
                 };
-                listener#onDrag(eventRec) |> applyAction(base, image)
+                Ref.get(listener)#onDrag(eventRec) |> applyAction(base, image)
             }
         });
         base.addMouseWheelListener(new JMouseWheelListener {
-            def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef + IO = {
-                listener#onScroll({amount = event.getWheelRotation()}) |> applyAction(base, image)
+            def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef + IO + r = {
+                Ref.get(listener)#onScroll({amount = event.getWheelRotation()}) |> applyAction(base, image)
             }
         })
     }
@@ -295,10 +297,10 @@ mod Graphics {
             case _ => MouseButton.Unknown
         }
 
-    def addKeyListener(image: BufferedImage, listener: KeyListener[ef], base: JComponent, frame: JFrame): Unit \ IO = {
+    def addKeyListener(image: BufferedImage, listener: Ref[KeyListener[ef], r], base: JComponent, frame: JFrame): Unit \ IO = {
         frame.addKeyListener(new JKeyListener {
-            def keyPressed(_this: JKeyListener, event: KeyEvent): Unit \ IO + ef = {
-                listener#onPress(getKeyFromEvent(event)) |> applyAction(base, image)
+            def keyPressed(_this: JKeyListener, event: KeyEvent): Unit \ IO + ef + r = {
+                Ref.get(listener)#onPress(getKeyFromEvent(event)) |> applyAction(base, image)
             }
             def keyReleased(_this: JKeyListener, _event: KeyEvent): Unit = ()
             def keyTyped(_this: JKeyListener, _event: KeyEvent): Unit = ()
