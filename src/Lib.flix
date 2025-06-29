@@ -44,13 +44,31 @@ mod Graphics {
         }
     }
 
+    pub type alias SubApp[ef: Eff] = {
+        init = Drawing -> Unit \ ef,
+        mouseListener = MouseListener[ef],
+        keyListener = KeyListener[ef]
+    }
+
     pub enum Drawing {
         case Drawing(Graphics2D)
     }
 
     pub enum Action[ef: Eff] {
         case Draw(Drawing -> Unit \ ef)
+        case Run(SubApp[ef])
         case Nothing
+    }
+
+    mod Action {
+        use Graphics.Drawing
+        use Graphics.SubApp
+
+        pub def draw(f: Drawing -> Unit \ ef): Action[ef + ef1] =
+            unchecked_cast(Draw(f) as Action[ef + ef1])
+
+        pub def runApp(app: SubApp[ef]): Action[ef + ef1] =
+            unchecked_cast(Run(app) as Action[ef + ef1])
     }
 
     pub enum MouseButton with Eq, ToString {
@@ -187,10 +205,17 @@ mod Graphics {
         waitForExit = Unit -> Unit \ Chan
     }
 
+    type alias State[ef: Eff, r: Region] = {
+        keyListener = Ref[KeyListener[ef], r],
+        mouseListener = Ref[MouseListener[ef], r]
+    }
+
     def makeFrame(config: App[ef]): Frame \ IO + Chan + ef = region rc {
         let {title, height, width, init, mouseListener = mouseListener0, keyListener = keyListener0} = config;
-        let mouseListener = Ref.fresh(rc, mouseListener0);
-        let keyListener = Ref.fresh(rc, keyListener0);
+        let state = {
+            mouseListener = Ref.fresh(rc, mouseListener0),
+            keyListener = Ref.fresh(rc, keyListener0)
+        };
         let (send, recv) = Channel.buffered(1);
         def waitForClose() = {
             // Unit only has one value, so no non-determinism.
@@ -214,8 +239,8 @@ mod Graphics {
                 new Dimension(width, height)
             }
         };
-        base |> addMouseListener(image, mouseListener);
-        (base, f) ||> addKeyListener(image, keyListener);
+        base |> addMouseListener(image, state);
+        (base, f) ||> addKeyListener(image, state);
         f.add(base);
         f.pack();
         f.setLocationRelativeTo(unchecked_cast(null as JComponent));
@@ -238,7 +263,7 @@ mod Graphics {
         })
     }
 
-    def addMouseListener(image: BufferedImage, listener: Ref[MouseListener[ef], r], base: JComponent): Unit \ IO = {
+    def addMouseListener(image: BufferedImage, state: State[ef, r], base: JComponent): Unit \ IO = {
         base.addMouseListener(new JMouseListener {
             def mouseExited(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseEntered(_this: JMouseListener, _event: MouseEvent): Unit = ()
@@ -248,7 +273,7 @@ mod Graphics {
                     y = event.getY(),
                     but = getMouseButton(event)
                 };
-                Ref.get(listener)#onPress(eventRec) |> applyAction(base, image)
+                Ref.get(state#mouseListener)#onPress(eventRec) |> applyAction(base, image, state)
             }
             def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO + r = {
@@ -257,7 +282,7 @@ mod Graphics {
                     y = event.getY(),
                     but = getMouseButton(event)
                 };
-                Ref.get(listener)#onRelease(eventRec) |> applyAction(base, image)
+                Ref.get(state#mouseListener)#onRelease(eventRec) |> applyAction(base, image, state)
             }
         });
         base.addMouseMotionListener(new JMouseMotionListener {
@@ -267,23 +292,32 @@ mod Graphics {
                     x = event.getX(),
                     y = event.getY()
                 };
-                Ref.get(listener)#onDrag(eventRec) |> applyAction(base, image)
+                Ref.get(state#mouseListener)#onDrag(eventRec) |> applyAction(base, image, state)
             }
         });
         base.addMouseWheelListener(new JMouseWheelListener {
             def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef + IO + r = {
-                Ref.get(listener)#onScroll({amount = event.getWheelRotation()}) |> applyAction(base, image)
+                Ref.get(state#mouseListener)#onScroll({amount = event.getWheelRotation()}) |> applyAction(base, image, state)
             }
         })
     }
 
-    def applyAction(base: JComponent, image: BufferedImage, action: Action[ef]): Unit \ ef + IO = {
+    def applyAction(
+        base: JComponent, image: BufferedImage, state: State[ef, r], action: Action[ef]
+    ): Unit \ IO + ef + r = {
         match action {
             case Action.Draw(paint) =>
                 let g = image.createGraphics();
                 paint(Drawing.Drawing(g));
                 g.dispose();
                 base.repaint()
+            case Action.Run(app) =>
+                let g = image.createGraphics();
+                app#init(Drawing.Drawing(g));
+                g.dispose();
+                base.repaint();
+                state#keyListener |> Ref.put(app#keyListener);
+                state#mouseListener |> Ref.put(app#mouseListener)
             case Action.Nothing =>
                 ()
         }
@@ -297,10 +331,10 @@ mod Graphics {
             case _ => MouseButton.Unknown
         }
 
-    def addKeyListener(image: BufferedImage, listener: Ref[KeyListener[ef], r], base: JComponent, frame: JFrame): Unit \ IO = {
+    def addKeyListener(image: BufferedImage, state: State[ef, r], base: JComponent, frame: JFrame): Unit \ IO = {
         frame.addKeyListener(new JKeyListener {
             def keyPressed(_this: JKeyListener, event: KeyEvent): Unit \ IO + ef + r = {
-                Ref.get(listener)#onPress(getKeyFromEvent(event)) |> applyAction(base, image)
+                Ref.get(state#keyListener)#onPress(getKeyFromEvent(event)) |> applyAction(base, image, state)
             }
             def keyReleased(_this: JKeyListener, _event: KeyEvent): Unit = ()
             def keyTyped(_this: JKeyListener, _event: KeyEvent): Unit = ()
