@@ -50,6 +50,20 @@ mod Graphics {
         keyListener = KeyListener[ef]
     }
 
+    mod SubApp {
+        use Graphics.Drawing
+        use Graphics.MouseListener
+        use Graphics.KeyListener
+
+        pub def mk(app: {
+            init = Drawing -> Unit \ ef1,
+            mouseListener = MouseListener[ef2],
+            keyListener = KeyListener[ef3]
+        }): SubApp[ef1 + ef2 + ef3] = {
+            unchecked_cast(app as SubApp[ef1 + ef2 + ef3])
+        }
+    }
+
     pub enum Drawing {
         case Drawing(Graphics2D)
     }
@@ -157,7 +171,7 @@ mod Graphics {
         case Yellow
     }
 
-    pub def drawRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32}, color: Color, d: Drawing): Unit \ IO = {
+    pub def drawRect(corner: {x = Int32, y = Int32}, dim: {width = Int32, height = Int32 | r}, color: Color, d: Drawing): Unit \ IO = {
         let Drawing.Drawing(g) = d;
         setColorMode(color, g);
         g.fillRect(corner#x, corner#y, dim#width, dim#height)
@@ -206,13 +220,21 @@ mod Graphics {
     }
 
     type alias State[ef: Eff, r: Region] = {
+        width = Int32,
+        height = Int32,
         keyListener = Ref[KeyListener[ef], r],
         mouseListener = Ref[MouseListener[ef], r]
+    }
+
+    def inbuiltInit(dim: {height = Int32, width = Int32 | r}, d: Drawing): Unit \ IO = {
+        drawRect({x = 0, y = 0}, dim, Color.Black, d)
     }
 
     def makeFrame(config: App[ef]): Frame \ IO + Chan + ef = region rc {
         let {title, height, width, init, mouseListener = mouseListener0, keyListener = keyListener0} = config;
         let state = {
+            width = width,
+            height = height,
             mouseListener = Ref.fresh(rc, mouseListener0),
             keyListener = Ref.fresh(rc, keyListener0)
         };
@@ -228,7 +250,7 @@ mod Graphics {
         let image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         let initG = image.createGraphics();
         let drawing = Drawing.Drawing(initG);
-        drawRect({x = 0, y = 0}, {height = height, width = width}, Color.Black, drawing);
+        inbuiltInit(config, drawing);
         init(drawing);
         initG.dispose();
         let base = new JComponent {
@@ -313,7 +335,9 @@ mod Graphics {
                 base.repaint()
             case Action.Run(app) =>
                 let g = image.createGraphics();
-                app#init(Drawing.Drawing(g));
+                let d = Drawing.Drawing(g);
+                inbuiltInit(state, d);
+                app#init(d);
                 g.dispose();
                 base.repaint();
                 state#keyListener |> Ref.put(app#keyListener);

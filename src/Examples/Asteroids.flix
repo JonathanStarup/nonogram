@@ -2,6 +2,7 @@ mod Examples.Asteroids {
 
 use Graphics.Action.Draw
 use Graphics.Action.Nothing
+use Graphics.Action.Run
 use Graphics.App
 use Graphics.Color
 use Graphics.drawRect
@@ -10,6 +11,8 @@ use Graphics.Key
 use Graphics.KeyListener
 use Graphics.MouseListener
 use Graphics.runApp
+use Graphics.Font
+use Graphics.SubApp
 
 pub def main(): Unit \ IO = {
     let height = 800;
@@ -39,11 +42,23 @@ pub def main(): Unit \ IO = {
         mouseListener = MouseListener.empty(),
         keyListener = KeyListener.mk({
             onPress = event -> match event {
-                case Key.Enter => Draw(d -> drawRect({x = 0, y = 0}, {width = width, height = height}, Color.Orange, d))
+                case Key.Enter => Run(gameApp({width = width, height = height}, subtitleFont))
                 case _ => Nothing
             }
         })
     }))
+}
+
+def gameApp(dim: {width = Int32, height = Int32}, font: Font): SubApp[IO] = {
+    let {width, height} = dim;
+    def init(d) = {
+        drawTextCenter({x = width/2, y = height/2}, "Work in progress ..", font, d)
+    };
+    SubApp.mk({
+        init = init,
+        keyListener = KeyListener.empty(),
+        mouseListener = MouseListener.empty()
+    })
 }
 
 }
