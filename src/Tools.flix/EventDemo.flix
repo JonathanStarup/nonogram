@@ -42,12 +42,10 @@ pub def main(): Unit \ IO = {
     })
 }
 
-def mousePosEventToString(prefix: String, event: {but = MouseButton, x = Int32, y = Int32}): String = {
+def mousePosEventToString(prefix: String, event: {but = MouseButton, x = Int32, y = Int32}): String =
     "${prefix}: ${event#but} ${pointLikeToString(event)}"
-}
 
-def pointLikeToString(point: {x = Int32, y = Int32 | r}): String = {
+def pointLikeToString(point: {x = Int32, y = Int32 | r}): String =
     "(x=${point#x}, y=${point#y})"
-}
 
 }
