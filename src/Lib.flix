@@ -18,8 +18,6 @@ mod Graphics {
     import javax.swing.JComponent
     import javax.swing.JFrame
 
-    type alias Test[t1: Type, t1: Eff] = Int32
-
     pub type alias App[ef1: Eff, ef2: Eff] = {
         title = String,
         height = Int32,
