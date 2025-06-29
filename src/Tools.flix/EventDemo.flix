@@ -2,6 +2,7 @@ mod Examples.ListenerEvents {
 
 use Graphics.Action.Draw
 use Graphics.Action.Nothing
+use Graphics.App
 use Graphics.Color
 use Graphics.drawRect
 use Graphics.drawTextCenter
@@ -27,7 +28,7 @@ pub def main(): Unit \ IO = {
     def init(d) = {
         drawText("No Event Yet", d)
     };
-    runApp({
+    runApp(App.mk({
         title = "Event Demo",
         width = width,
         height = height,
@@ -41,7 +42,7 @@ pub def main(): Unit \ IO = {
         keyListener = KeyListener.mk({
             onPress = event -> Draw(d -> drawText("key press: ${event}", d))
         })
-    })
+    }))
 }
 
 def mousePosEventToString(prefix: String, event: {but = MouseButton, x = Int32, y = Int32}): String =

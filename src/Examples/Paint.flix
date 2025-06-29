@@ -2,6 +2,7 @@ mod Examples.Paint {
 
 use Graphics.Action.Draw
 use Graphics.Action.Nothing
+use Graphics.App
 use Graphics.Color
 use Graphics.drawRect
 use Graphics.KeyListener
@@ -59,7 +60,7 @@ pub def main(): Unit \ IO = region rc {
             case _ => Nothing
         }
     };
-    runApp({
+    runApp(App.mk({
         title = "Paint",
         width = width,
         height = height,
@@ -84,7 +85,7 @@ pub def main(): Unit \ IO = region rc {
             }
         }),
         keyListener = KeyListener.empty()
-    })
+    }))
 }
 
 def nextColor(c: Color): Color = match c {

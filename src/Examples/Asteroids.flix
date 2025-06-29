@@ -2,6 +2,7 @@ mod Examples.Asteroids {
 
 use Graphics.Action.Draw
 use Graphics.Action.Nothing
+use Graphics.App
 use Graphics.Color
 use Graphics.drawRect
 use Graphics.drawTextCenter
@@ -30,7 +31,7 @@ pub def main(): Unit \ IO = {
         drawTextCenter({x = width/2, y = 1*height/4}, "~ ~ Astroids ~ ~", titleFont, d);
         drawTextCenter({x = width/2, y = 2*height/4}, "press enter to play", subtitleFont, d)
     };
-    runApp({
+    runApp(App.mk({
         title = "Asteroids",
         width = width,
         height = height,
@@ -42,7 +43,7 @@ pub def main(): Unit \ IO = {
                 case _ => Nothing
             }
         })
-    })
+    }))
 }
 
 }

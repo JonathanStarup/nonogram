@@ -18,13 +18,30 @@ mod Graphics {
     import javax.swing.JComponent
     import javax.swing.JFrame
 
-    pub type alias App[ef1: Eff, ef2: Eff] = {
+    pub type alias App[ef: Eff] = {
         title = String,
         height = Int32,
         width = Int32,
-        init = Drawing -> Unit \ ef1,
-        mouseListener = MouseListener[ef2],
-        keyListener = KeyListener[ef2]
+        init = Drawing -> Unit \ ef,
+        mouseListener = MouseListener[ef],
+        keyListener = KeyListener[ef]
+    }
+
+    mod App {
+        use Graphics.Drawing
+        use Graphics.MouseListener
+        use Graphics.KeyListener
+
+        pub def mk(app: {
+            title = String,
+            height = Int32,
+            width = Int32,
+            init = Drawing -> Unit \ ef1,
+            mouseListener = MouseListener[ef2],
+            keyListener = KeyListener[ef3]
+        }): App[ef1 + ef2 + ef3] = {
+            unchecked_cast(app as App[ef1 + ef2 + ef3])
+        }
     }
 
     pub enum Drawing {
@@ -98,7 +115,7 @@ mod Graphics {
         })
     }
 
-    pub def runApp(config: App[ef1, ef2]): Unit \ IO + ef1 + ef2 = {
+    pub def runApp(config: App[ef]): Unit \ IO + ef = {
         // The channel is enclosed so the Chan effect can be removed.
         checked_ecast(unsafely Chan run {
             let {frame = _, waitForExit} = makeFrame(config);
@@ -170,7 +187,7 @@ mod Graphics {
         waitForExit = Unit -> Unit \ Chan
     }
 
-    def makeFrame(config: App[ef1, ef2]): Frame \ IO + Chan + ef1 = {
+    def makeFrame(config: App[ef]): Frame \ IO + Chan + ef = {
         let {title, height, width, init, mouseListener, keyListener} = config;
         let (send, recv) = Channel.buffered(1);
         def waitForClose() = {
@@ -200,7 +217,6 @@ mod Graphics {
         f.add(base);
         f.pack();
         f.setLocationRelativeTo(unchecked_cast(null as JComponent));
-        touchEff((ProxyEff.Proxy: ProxyEff[ef1]));
         f.setResizable(false);
         f.setVisible(true);
         {frame = f, waitForExit = waitForClose}
@@ -219,12 +235,6 @@ mod Graphics {
             def windowOpened(_this: WindowListener, _: WindowEvent): Unit = ()
         })
     }
-
-    enum ProxyEff[_: Eff] {
-        case Proxy
-    }
-
-    def touchEff(_: ProxyEff[ef]): Unit \ ef = checked_ecast(())
 
     def addMouseListener(image: BufferedImage, listener: MouseListener[ef], base: JComponent): Unit \ IO = {
         base.addMouseListener(new JMouseListener {
