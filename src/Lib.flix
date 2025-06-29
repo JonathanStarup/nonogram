@@ -3,9 +3,11 @@ mod Graphics {
     import java.awt.{Font => JFont}
     import java.awt.{Graphics => JGraphics}
     import java.awt.Dimension
+    import java.awt.event.{KeyListener => JKeyListener}
     import java.awt.event.{MouseListener => JMouseListener}
     import java.awt.event.{MouseMotionListener => JMouseMotionListener}
     import java.awt.event.{MouseWheelListener => JMouseWheelListener}
+    import java.awt.event.KeyEvent
     import java.awt.event.MouseEvent
     import java.awt.event.MouseWheelEvent
     import java.awt.event.WindowEvent
@@ -23,14 +25,15 @@ mod Graphics {
         height = Int32,
         width = Int32,
         init = Drawing -> Unit \ ef1,
-        mouseListener = MouseListener[ef2]
+        mouseListener = MouseListener[ef2],
+        keyListener = KeyListener[ef2]
     }
 
     pub enum Drawing {
         case Drawing(Graphics2D)
     }
 
-    pub enum MouseButton with Eq {
+    pub enum MouseButton with Eq, ToString {
         case Left
         case Middle
         case Right
@@ -47,23 +50,47 @@ mod Graphics {
     mod MouseListener {
         use Graphics.MouseButton
         use Graphics.Drawing
+
         pub def mk(listener: {
             onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef1] \ ef2,
             onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef3] \ ef4,
             onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6,
             onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef7] \ ef8
-        }): MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8] = {
-            unchecked_cast(listener as MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8])
+        }): MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8 + ef9] = {
+            unchecked_cast(listener as MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8 + ef9])
         }
-    }
 
-    mod MouseListener {
-        pub def empty(): MouseListener[{}] = {
+        pub def empty(): MouseListener[ef] = mk({
             onPress = _ -> None,
             onRelease = _ -> None,
             onDrag = _ -> None,
             onScroll = _ -> None
+        })
+    }
+
+    pub enum Key with Eq, ToString {
+        case Letter(Char)
+        case Enter
+        case Unknown
+    }
+
+    pub type alias KeyListener[ef: Eff] = {
+        onPress = Key -> Option[Drawing -> Unit \ ef] \ ef
+    }
+
+    mod KeyListener {
+        use Graphics.Key
+        use Graphics.Drawing
+
+        pub def mk(listener: {
+            onPress = Key -> Option[Drawing -> Unit \ ef1] \ ef2
+        }): KeyListener[ef1 + ef2 + ef3] = {
+            unchecked_cast(listener as KeyListener[ef1 + ef2 + ef3])
         }
+
+        pub def empty(): KeyListener[ef] = mk({
+            onPress = _ -> None
+        })
     }
 
     pub def runApp(config: App[ef1, ef2]): Unit \ IO + ef1 + ef2 = {
@@ -139,7 +166,7 @@ mod Graphics {
     }
 
     def makeFrame(config: App[ef1, ef2]): Frame \ IO + Chan + ef1 = {
-        let {title, height, width, init, mouseListener} = config;
+        let {title, height, width, init, mouseListener, keyListener} = config;
         let (send, recv) = Channel.buffered(1);
         def waitForClose() = {
             // Unit only has one value, so no non-determinism.
@@ -164,6 +191,7 @@ mod Graphics {
             }
         };
         base |> addMouseListener(image, mouseListener);
+        (base, f) ||> addKeyListener(image, keyListener);
         f.add(base);
         f.pack();
         touchEff((ProxyEff.Proxy: ProxyEff[ef1]));
@@ -235,6 +263,7 @@ mod Graphics {
         })
     }
 
+
     def getMouseButton(event: MouseEvent): MouseButton =
         match unsafely IO run event.getButton() {
             case but if but == unsafely IO run MouseEvent.BUTTON1 => MouseButton.Left
@@ -243,6 +272,17 @@ mod Graphics {
             case _ => MouseButton.Unknown
         }
 
+    def addKeyListener(image: BufferedImage, listener: KeyListener[ef], base: JComponent, frame: JFrame): Unit \ IO = {
+        frame.addKeyListener(new JKeyListener {
+            def keyPressed(_this: JKeyListener, event: KeyEvent): Unit \ IO + ef = {
+                listener#onPress(getKeyFromEvent(event)) |>
+                    Option.forEach(paint -> paintImage(paint, base, image))
+            }
+            def keyReleased(_this: JKeyListener, _event: KeyEvent): Unit = ()
+            def keyTyped(_this: JKeyListener, _event: KeyEvent): Unit = ()
+        })
+    }
+
     def paintImage(paint: Drawing -> Unit \ ef, base: JComponent, image: BufferedImage): Unit \ IO + ef = {
         let g = image.createGraphics();
         paint(Drawing.Drawing(g));
@@ -250,6 +290,37 @@ mod Graphics {
         base.repaint()
     }
 
+    def getKeyFromEvent(event: KeyEvent): Key = {
+        let code = unsafely IO run event.getKeyCode();
+        if (code == unsafely IO run KeyEvent.VK_A) Key.Letter('a')
+        else if (code == unsafely IO run KeyEvent.VK_B) Key.Letter('b')
+        else if (code == unsafely IO run KeyEvent.VK_C) Key.Letter('c')
+        else if (code == unsafely IO run KeyEvent.VK_D) Key.Letter('d')
+        else if (code == unsafely IO run KeyEvent.VK_E) Key.Letter('e')
+        else if (code == unsafely IO run KeyEvent.VK_F) Key.Letter('f')
+        else if (code == unsafely IO run KeyEvent.VK_G) Key.Letter('g')
+        else if (code == unsafely IO run KeyEvent.VK_H) Key.Letter('h')
+        else if (code == unsafely IO run KeyEvent.VK_I) Key.Letter('i')
+        else if (code == unsafely IO run KeyEvent.VK_J) Key.Letter('j')
+        else if (code == unsafely IO run KeyEvent.VK_K) Key.Letter('k')
+        else if (code == unsafely IO run KeyEvent.VK_L) Key.Letter('l')
+        else if (code == unsafely IO run KeyEvent.VK_M) Key.Letter('m')
+        else if (code == unsafely IO run KeyEvent.VK_N) Key.Letter('n')
+        else if (code == unsafely IO run KeyEvent.VK_O) Key.Letter('o')
+        else if (code == unsafely IO run KeyEvent.VK_P) Key.Letter('p')
+        else if (code == unsafely IO run KeyEvent.VK_Q) Key.Letter('q')
+        else if (code == unsafely IO run KeyEvent.VK_R) Key.Letter('r')
+        else if (code == unsafely IO run KeyEvent.VK_S) Key.Letter('x')
+        else if (code == unsafely IO run KeyEvent.VK_T) Key.Letter('t')
+        else if (code == unsafely IO run KeyEvent.VK_U) Key.Letter('u')
+        else if (code == unsafely IO run KeyEvent.VK_V) Key.Letter('v')
+        else if (code == unsafely IO run KeyEvent.VK_W) Key.Letter('w')
+        else if (code == unsafely IO run KeyEvent.VK_X) Key.Letter('x')
+        else if (code == unsafely IO run KeyEvent.VK_Y) Key.Letter('y')
+        else if (code == unsafely IO run KeyEvent.VK_Z) Key.Letter('z')
+        else if (code == unsafely IO run KeyEvent.VK_ENTER) Key.Enter
+        else Key.Unknown
+    }
 
     def setColorMode(color: Color, g: Graphics2D): Unit \ IO =
         match color {

@@ -5,6 +5,7 @@ use Graphics.Color
 use Graphics.MouseButton
 use Graphics.runApp
 use Graphics.MouseListener
+use Graphics.KeyListener
 
 pub def main(): Unit \ IO = region rc {
     let width = 1200;
@@ -79,7 +80,8 @@ pub def main(): Unit \ IO = region rc {
                     drawUI(d)
                 }) else None
             }
-        })
+        }),
+        keyListener = KeyListener.empty()
     })
 }
 

@@ -1,9 +1,10 @@
 mod Examples.Asteroids {
 
 use Graphics.Color
-use Graphics.drawText
+use Graphics.drawRect
 use Graphics.drawTextCenter
-use Graphics.MouseButton
+use Graphics.Key
+use Graphics.KeyListener
 use Graphics.MouseListener
 use Graphics.runApp
 
@@ -32,7 +33,13 @@ pub def main(): Unit \ IO = {
         width = width,
         height = height,
         init = init,
-        mouseListener = MouseListener.empty()
+        mouseListener = MouseListener.empty(),
+        keyListener = KeyListener.mk({
+            onPress = event -> match event {
+                case Key.Enter => Some(d -> drawRect({x = 0, y = 0}, {width = width, height = height}, Color.Orange, d))
+                case _ => None
+            }
+        })
     })
 }
 
