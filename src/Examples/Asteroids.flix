@@ -1,5 +1,7 @@
 mod Examples.Asteroids {
 
+use Graphics.Action.Draw
+use Graphics.Action.Nothing
 use Graphics.Color
 use Graphics.drawRect
 use Graphics.drawTextCenter
@@ -36,8 +38,8 @@ pub def main(): Unit \ IO = {
         mouseListener = MouseListener.empty(),
         keyListener = KeyListener.mk({
             onPress = event -> match event {
-                case Key.Enter => Some(d -> drawRect({x = 0, y = 0}, {width = width, height = height}, Color.Orange, d))
-                case _ => None
+                case Key.Enter => Draw(d -> drawRect({x = 0, y = 0}, {width = width, height = height}, Color.Orange, d))
+                case _ => Nothing
             }
         })
     })

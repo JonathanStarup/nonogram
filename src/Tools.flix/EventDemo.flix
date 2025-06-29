@@ -1,5 +1,7 @@
 mod Examples.ListenerEvents {
 
+use Graphics.Action.Draw
+use Graphics.Action.Nothing
 use Graphics.Color
 use Graphics.drawRect
 use Graphics.drawTextCenter
@@ -31,13 +33,13 @@ pub def main(): Unit \ IO = {
         height = height,
         init = init,
         mouseListener = MouseListener.mk({
-            onPress = event -> Some(d -> drawText(mousePosEventToString("mouse press", event), d)),
-            onRelease = event -> Some(d -> drawText(mousePosEventToString("mouse release", event), d)),
-            onDrag = event -> Some(d -> drawText("mouse drag: " + pointLikeToString(event), d)),
-            onScroll = amount -> Some(d -> drawText("mouse scroll: ${amount#amount}", d))
+            onPress = event -> Draw(d -> drawText(mousePosEventToString("mouse press", event), d)),
+            onRelease = event -> Draw(d -> drawText(mousePosEventToString("mouse release", event), d)),
+            onDrag = event -> Draw(d -> drawText("mouse drag: " + pointLikeToString(event), d)),
+            onScroll = amount -> Draw(d -> drawText("mouse scroll: ${amount#amount}", d))
         }),
         keyListener = KeyListener.mk({
-            onPress = event -> Some(d -> drawText("key press: ${event}", d))
+            onPress = event -> Draw(d -> drawText("key press: ${event}", d))
         })
     })
 }

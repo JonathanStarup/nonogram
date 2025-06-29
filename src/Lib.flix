@@ -31,6 +31,11 @@ mod Graphics {
         case Drawing(Graphics2D)
     }
 
+    pub enum Action[ef: Eff] {
+        case Draw(Drawing -> Unit \ ef)
+        case Nothing
+    }
+
     pub enum MouseButton with Eq, ToString {
         case Left
         case Middle
@@ -39,30 +44,31 @@ mod Graphics {
     }
 
     pub type alias MouseListener[ef: Eff] = {
-        onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef] \ ef,
-        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef] \ ef,
-        onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef] \ ef,
-        onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef] \ ef
+        onPress = {x = Int32, y = Int32, but = MouseButton} -> Action[ef] \ ef,
+        onRelease = {x = Int32, y = Int32, but = MouseButton} -> Action[ef] \ ef,
+        onDrag = {x = Int32, y = Int32} -> Action[ef] \ ef,
+        onScroll = {amount = Int32} -> Action[ef] \ ef
     }
 
     mod MouseListener {
         use Graphics.MouseButton
         use Graphics.Drawing
+        use Graphics.Action
 
         pub def mk(listener: {
-            onPress = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef1] \ ef2,
-            onRelease = {x = Int32, y = Int32, but = MouseButton} -> Option[Drawing -> Unit \ ef3] \ ef4,
-            onDrag = {x = Int32, y = Int32} -> Option[Drawing -> Unit \ ef5] \ ef6,
-            onScroll = {amount = Int32} -> Option[Drawing -> Unit \ ef7] \ ef8
+            onPress = {x = Int32, y = Int32, but = MouseButton} -> Action[ef1] \ ef2,
+            onRelease = {x = Int32, y = Int32, but = MouseButton} -> Action[ef3] \ ef4,
+            onDrag = {x = Int32, y = Int32} -> Action[ef5] \ ef6,
+            onScroll = {amount = Int32} -> Action[ef7] \ ef8
         }): MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8 + ef9] = {
             unchecked_cast(listener as MouseListener[ef1 + ef2 + ef3 + ef4 + ef5 + ef6 + ef7 + ef8 + ef9])
         }
 
         pub def empty(): MouseListener[ef] = mk({
-            onPress = _ -> None,
-            onRelease = _ -> None,
-            onDrag = _ -> None,
-            onScroll = _ -> None
+            onPress = _ -> Action.Nothing,
+            onRelease = _ -> Action.Nothing,
+            onDrag = _ -> Action.Nothing,
+            onScroll = _ -> Action.Nothing
         })
     }
 
@@ -73,21 +79,22 @@ mod Graphics {
     }
 
     pub type alias KeyListener[ef: Eff] = {
-        onPress = Key -> Option[Drawing -> Unit \ ef] \ ef
+        onPress = Key -> Action[ef] \ ef
     }
 
     mod KeyListener {
+        use Graphics.Action
         use Graphics.Key
         use Graphics.Drawing
 
         pub def mk(listener: {
-            onPress = Key -> Option[Drawing -> Unit \ ef1] \ ef2
+            onPress = Key -> Action[ef1] \ ef2
         }): KeyListener[ef1 + ef2 + ef3] = {
             unchecked_cast(listener as KeyListener[ef1 + ef2 + ef3])
         }
 
         pub def empty(): KeyListener[ef] = mk({
-            onPress = _ -> None
+            onPress = _ -> Action.Nothing
         })
     }
 
@@ -229,8 +236,7 @@ mod Graphics {
                     y = event.getY(),
                     but = getMouseButton(event)
                 };
-                listener#onPress(eventRec) |>
-                    Option.forEach(paint -> paintImage(paint, base, image))
+                listener#onPress(eventRec) |> applyAction(base, image)
             }
             def mouseClicked(_this: JMouseListener, _event: MouseEvent): Unit = ()
             def mouseReleased(_this: JMouseListener, event: MouseEvent): Unit \ ef + IO = {
@@ -239,8 +245,7 @@ mod Graphics {
                     y = event.getY(),
                     but = getMouseButton(event)
                 };
-                listener#onRelease(eventRec) |>
-                    Option.forEach(paint -> paintImage(paint, base, image))
+                listener#onRelease(eventRec) |> applyAction(base, image)
             }
         });
         base.addMouseMotionListener(new JMouseMotionListener {
@@ -250,18 +255,27 @@ mod Graphics {
                     x = event.getX(),
                     y = event.getY()
                 };
-                listener#onDrag(eventRec) |>
-                    Option.forEach(paint -> paintImage(paint, base, image))
+                listener#onDrag(eventRec) |> applyAction(base, image)
             }
         });
         base.addMouseWheelListener(new JMouseWheelListener {
             def mouseWheelMoved(_this: JMouseWheelListener, event: MouseWheelEvent): Unit \ ef + IO = {
-                listener#onScroll({amount = event.getWheelRotation()}) |>
-                    Option.forEach(paint -> paintImage(paint, base, image))
+                listener#onScroll({amount = event.getWheelRotation()}) |> applyAction(base, image)
             }
         })
     }
 
+    def applyAction(base: JComponent, image: BufferedImage, action: Action[ef]): Unit \ ef + IO = {
+        match action {
+            case Action.Draw(paint) =>
+                let g = image.createGraphics();
+                paint(Drawing.Drawing(g));
+                g.dispose();
+                base.repaint()
+            case Action.Nothing =>
+                ()
+        }
+    }
 
     def getMouseButton(event: MouseEvent): MouseButton =
         match unsafely IO run event.getButton() {
@@ -274,19 +288,11 @@ mod Graphics {
     def addKeyListener(image: BufferedImage, listener: KeyListener[ef], base: JComponent, frame: JFrame): Unit \ IO = {
         frame.addKeyListener(new JKeyListener {
             def keyPressed(_this: JKeyListener, event: KeyEvent): Unit \ IO + ef = {
-                listener#onPress(getKeyFromEvent(event)) |>
-                    Option.forEach(paint -> paintImage(paint, base, image))
+                listener#onPress(getKeyFromEvent(event)) |> applyAction(base, image)
             }
             def keyReleased(_this: JKeyListener, _event: KeyEvent): Unit = ()
             def keyTyped(_this: JKeyListener, _event: KeyEvent): Unit = ()
         })
-    }
-
-    def paintImage(paint: Drawing -> Unit \ ef, base: JComponent, image: BufferedImage): Unit \ IO + ef = {
-        let g = image.createGraphics();
-        paint(Drawing.Drawing(g));
-        g.dispose();
-        base.repaint()
     }
 
     def getKeyFromEvent(event: KeyEvent): Key = {

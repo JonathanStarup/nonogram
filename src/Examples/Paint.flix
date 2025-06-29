@@ -1,5 +1,7 @@
 mod Examples.Paint {
 
+use Graphics.Action.Draw
+use Graphics.Action.Nothing
 use Graphics.Color
 use Graphics.drawRect
 use Graphics.KeyListener
@@ -47,14 +49,14 @@ pub def main(): Unit \ IO = region rc {
         });
         match event#but {
             case MouseButton.Left =>
-                Some(d -> {
+                Draw(d -> {
                     paintSpot({x = event#x, y = event#y}, d);
                     drawUI(d)
                 })
             case MouseButton.Right =>
                 Ref.transform(nextColor, paint);
-                Some(drawUI)
-            case _ => None
+                Draw(drawUI)
+            case _ => Nothing
         }
     };
     runApp({
@@ -64,21 +66,21 @@ pub def main(): Unit \ IO = region rc {
         init = init,
         mouseListener = MouseListener.mk({
             onPress = onPress,
-            onRelease = _ -> None,
+            onRelease = _ -> Nothing,
             onDrag = event -> {
-                if (Ref.get(isPainting)) Some(d -> {
+                if (Ref.get(isPainting)) Draw(d -> {
                     paintSpot({x = event#x, y = event#y}, d);
                     drawUI(d)
-                }) else None
+                }) else Nothing
             },
             onScroll = event -> {
-                if (event#amount > 0 and Ref.get(size) > 1) Some(d -> {
+                if (event#amount > 0 and Ref.get(size) > 1) Draw(d -> {
                     Ref.transform(val -> val - 1, size);
                     drawUI(d)
-                }) else if (event#amount < 0 and Ref.get(size) < 99) Some(d -> {
+                }) else if (event#amount < 0 and Ref.get(size) < 99) Draw(d -> {
                     Ref.transform(val -> val + 1, size);
                     drawUI(d)
-                }) else None
+                }) else Nothing
             }
         }),
         keyListener = KeyListener.empty()
