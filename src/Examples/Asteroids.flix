@@ -29,7 +29,7 @@ pub def main(): Unit \ IO = {
         drawTextCenter({x = width/2, y = 2*height/4}, "press enter to play", subtitleFont, d)
     };
     runApp({
-        title = "Physics",
+        title = "Asteroids",
         width = width,
         height = height,
         init = init,

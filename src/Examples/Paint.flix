@@ -58,7 +58,7 @@ pub def main(): Unit \ IO = region rc {
         }
     };
     runApp({
-        title = "Demo",
+        title = "Paint",
         width = width,
         height = height,
         init = init,
